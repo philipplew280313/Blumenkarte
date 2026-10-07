@@ -1,0 +1,100 @@
+# Baut die Blumenkarte als iPhone-App (.ipa, unsigniert) auf einem Apple-Rechner von GitHub.
+# AltStore signiert sie beim Installieren mit deiner Apple-ID.
+# Ergebnis: https://github.com/<du>/<projekt>/releases/latest/download/Blumenkarte.ipa
+name: iPhone-App bauen
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "*.js"
+      - "icons/**"
+      - "vendor/**"
+      - "native/**"
+      - ".github/workflows/ios-app.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-app
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: App-Dateien übernehmen
+        run: |
+          mkdir -p native/www
+          cp -R index.html app.js draw.js manifest.webmanifest vendor icons native/www/
+
+      - name: Capacitor installieren
+        working-directory: native
+        run: npm install --no-audit --no-fund
+
+      - name: Capacitor-Laufzeit einbinden
+        working-directory: native
+        run: |
+          if [ -f node_modules/@capacitor/core/dist/capacitor.js ]; then
+            cp node_modules/@capacitor/core/dist/capacitor.js www/capacitor.js
+            perl -0pi -e 's#<script src="vendor/leaflet.js"></script>#<script src="capacitor.js"></script>\n<script src="vendor/leaflet.js"></script>#' www/index.html
+            grep -n 'capacitor.js' www/index.html
+          else
+            echo "Hinweis: capacitor.js nicht gefunden – die App nutzt die eingebaute Brücke."
+          fi
+
+      - name: iOS-Projekt erzeugen
+        working-directory: native
+        run: |
+          npx cap add ios
+          npx cap sync ios
+
+      - name: Berechtigungen, Name, Icon und Startbildschirm
+        working-directory: native/ios/App/App
+        run: |
+          P=Info.plist
+          plutil -replace CFBundleDisplayName -string "Blumenkarte" $P
+          plutil -replace NSCameraUsageDescription -string "Damit du Blumen fotografieren kannst." $P
+          plutil -replace NSLocationWhenInUseUsageDescription -string "Damit deine Position auf der Karte erscheint und Fotos dem Fundort zugeordnet werden." $P
+          plutil -replace NSPhotoLibraryUsageDescription -string "Damit du Fotos aus deiner Mediathek hinzufügen kannst." $P
+          plutil -replace NSPhotoLibraryAddUsageDescription -string "Damit Blumenfotos mit Ort und Notiz in deinen Fotos gesichert werden." $P
+          plutil -replace UIFileSharingEnabled -bool NO $P
+          echo "--- AppIcon"; ls Assets.xcassets/AppIcon.appiconset
+          for f in Assets.xcassets/AppIcon.appiconset/*.png; do sips -z 1024 1024 ../../../icon-1024.png --out "$f" >/dev/null; done
+          echo "--- Splash"; ls Assets.xcassets/Splash.imageset || true
+          for f in Assets.xcassets/Splash.imageset/*.png; do [ -f "$f" ] && cp ../../../splash-2732.png "$f"; done
+          plutil -p $P | grep -E "Usage|DisplayName"
+
+      - name: App bauen (unsigniert)
+        working-directory: native/ios/App
+        run: |
+          if [ -d App.xcworkspace ]; then SRC="-workspace App.xcworkspace"; else SRC="-project App.xcodeproj"; fi
+          xcodebuild $SRC -scheme App -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | tail -n 40
+          test -d build/Build/Products/Release-iphoneos/App.app
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qry Blumenkarte.ipa Payload
+          ls -la Blumenkarte.ipa
+
+      - name: Als Download bereitstellen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="app-${{ github.run_number }}"
+          gh release create "$TAG" native/ios/App/Blumenkarte.ipa \
+            --title "Blumenkarte App (Bau ${{ github.run_number }})" \
+            --notes "In AltStore installieren: Datei aufs iPhone laden, dann AltStore → Meine Apps → + → Blumenkarte.ipa wählen." \
+            --latest

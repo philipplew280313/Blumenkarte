@@ -7,6 +7,44 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem('bk.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem('bk.' + k, JSON.stringify(v)); } catch { } }
 };
+/* ---------- Plattform: Web-App (Safari / Home-Bildschirm) oder echte iPhone-App (Capacitor) ---------- */
+const NATIVE = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+const nativePlugins = {};
+function plugin(name) { // iPhone-Funktion (Kamera-unabhängig): Dateien, Teilen, Standort
+  const C = window.Capacitor; if (!C) return null;
+  if (!nativePlugins[name]) nativePlugins[name] = typeof C.registerPlugin === 'function' ? C.registerPlugin(name) : null;
+  return nativePlugins[name];
+}
+function callNative(name, method, opts = {}) {
+  const p = plugin(name);
+  if (p && typeof p[method] === 'function') return p[method](opts);
+  if (window.Capacitor?.nativePromise) return window.Capacitor.nativePromise(name, method, opts);
+  return Promise.reject(new Error('iPhone-Funktion nicht verfügbar: ' + name));
+}
+function blobToBase64(blob) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(r.error); r.readAsDataURL(blob); });
+}
+// Dateien teilen bzw. sichern. true = geteilt, false = abgebrochen, null = hier nicht möglich.
+// Im Web muss das direkt im Tipp-Handler starten (kein await davor).
+async function shareFiles(files, text) {
+  if (NATIVE) {
+    const uris = [];
+    for (const f of files) {
+      const path = 'teilen/' + f.name, CH = 4 * 1024 * 1024; // in 4-MB-Stücken, damit auch große Backups passen
+      for (let o = 0; o < Math.max(f.size, 1); o += CH) {
+        const data = await blobToBase64(f.slice(o, o + CH));
+        await callNative('Filesystem', o === 0 ? 'writeFile' : 'appendFile', { path, data, directory: 'CACHE', recursive: true });
+      }
+      uris.push((await callNative('Filesystem', 'getUri', { path, directory: 'CACHE' })).uri);
+    }
+    try { await callNative('Share', 'share', text ? { files: uris, text } : { files: uris }); return true; } catch { return false; }
+  }
+  if (navigator.canShare?.({ files })) {
+    try { await navigator.share(text ? { files, text } : { files }); return true; } catch { return false; }
+  }
+  return null;
+}
+
 const ICON = {
   pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s6.5-5.8 6.5-11A6.5 6.5 0 0 0 5.5 10c0 5.2 6.5 11 6.5 11Z"/><circle cx="12" cy="10" r="2.3"/></svg>',
   nav: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg>',
@@ -57,6 +95,55 @@ const DefTileLayer = L.TileLayer.extend({
     });
   },
   getTileUrl(c) { return tileUrl(this.def, c.z, c.x, c.y); }
+});
+/* Offline-Kacheln: im Web im Browser-Cache (Service Worker liefert aus),
+   in der iPhone-App als Dateien im App-Ordner (ohne iCloud-Backup). */
+function h64(s) {
+  let a = 0x811c9dc5, b = 0x9e3779b9;
+  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); a = Math.imul(a ^ c, 16777619); b = Math.imul(b ^ c, 2246822507) ^ (b >>> 13); }
+  return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
+}
+const tileRel = url => { const h = h64(url); return `${h.slice(0, 2)}/${h}${/image%2Fpng/.test(url) ? '.png' : '.jpg'}`; };
+const TileStore = NATIVE ? {
+  ok: true, base: null, dir: 'LIBRARY_NO_CLOUD',
+  async init() {
+    for (const dir of ['LIBRARY_NO_CLOUD', 'LIBRARY']) {
+      try { const r = await callNative('Filesystem', 'getUri', { path: 'kacheln', directory: dir }); this.dir = dir; this.base = String(r.uri).replace(/\/$/, ''); return; } catch { }
+    }
+  },
+  localSrc(url) { return this.base && window.Capacitor.convertFileSrc ? window.Capacitor.convertFileSrc(this.base + '/' + tileRel(url)) : null; },
+  async has(url) { try { await callNative('Filesystem', 'stat', { path: 'kacheln/' + tileRel(url), directory: this.dir }); return true; } catch { return false; } },
+  async download(url) { await callNative('Filesystem', 'downloadFile', { url, path: 'kacheln/' + tileRel(url), directory: this.dir, recursive: true }); return 0; },
+  clear() { return callNative('Filesystem', 'rmdir', { path: 'kacheln', directory: this.dir, recursive: true }).catch(() => { }); }
+} : {
+  ok: 'caches' in window,
+  init() { },
+  localSrc() { return null; },
+  async has(url) { return !!(await (await caches.open(TILES_CACHE)).match(url)); },
+  async download(url) {
+    const r = await fetchTile(url);
+    if (!r.ok && r.type !== 'opaque') throw new Error('HTTP ' + r.status);
+    const n = r.type === 'opaque' ? 0 : (await r.clone().blob()).size;
+    await (await caches.open(TILES_CACHE)).put(url, r);
+    return n;
+  },
+  clear() { return caches.delete(TILES_CACHE); }
+};
+TileStore.ready = Promise.resolve(TileStore.init()).catch(() => { });
+
+if (NATIVE) DefTileLayer.include({
+  createTile(coords, done) {
+    const img = document.createElement('img'); img.alt = ''; img.setAttribute('role', 'presentation');
+    const net = this.getTileUrl(coords);
+    TileStore.ready.then(() => { // erst wissen, wo die Offline-Kacheln liegen
+      const local = TileStore.localSrc(net);
+      let usedNet = !local;
+      img.onload = () => done(null, img);
+      img.onerror = e => { if (!usedNet) { usedNet = true; img.src = net; } else done(e, img); };
+      img.src = local || net;
+    });
+    return img;
+  }
 });
 
 const lastView = store.get('view', null);
@@ -109,7 +196,18 @@ function updateMe() {
   if (follow) map.panTo(ll, { animate: true });
   if (firstFix) { firstFix = false; if (!lastView) map.setView(ll, 16); }
 }
+function onGeo(p) {
+  fix = { lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy), t: Date.now() };
+  updateMe();
+}
 function startGeo() {
+  const G = NATIVE ? plugin('Geolocation') : null;
+  if (G && typeof G.watchPosition === 'function') {
+    Promise.resolve(G.watchPosition({ enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }, (p, err) => {
+      if (p) onGeo(p); else if (err) console.warn('Standort', err);
+    })).catch(() => toast('Standortzugriff verweigert – in den iPhone-Einstellungen erlauben'));
+    return;
+  }
   if (!('geolocation' in navigator)) return toast('Standort wird von diesem Gerät nicht unterstützt');
   navigator.geolocation.watchPosition(p => {
     fix = { lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy), t: Date.now() };
@@ -129,6 +227,11 @@ map.on('dragstart', () => setFollow(false));
 
 function freshFix(maxAgeMs = 120000) { return fix && Date.now() - fix.t < maxAgeMs ? { ...fix } : null; }
 function currentPosition(timeout = 12000) {
+  const G = NATIVE ? plugin('Geolocation') : null;
+  if (G && typeof G.getCurrentPosition === 'function') {
+    return G.getCurrentPosition({ enableHighAccuracy: true, timeout, maximumAge: 5000 })
+      .then(p => ({ lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy), t: Date.now() }), () => null);
+  }
   return new Promise(res => {
     if (!navigator.geolocation) return res(null);
     navigator.geolocation.getCurrentPosition(
@@ -399,8 +502,7 @@ const fileName = r => `${(r.title || 'blume').replace(/[^\wäöüÄÖÜß-]+/g, 
 // Öffnet das iOS-Teilen-Menü („Bild sichern“ / „X Bilder sichern“). Muss direkt im Tipp-Handler laufen.
 function shareToPhotos(recs, u8s) {
   const files = recs.map((r, i) => new File([tagJpeg(u8s[i], r)], fileName(r), { type: 'image/jpeg' }));
-  if (!navigator.canShare?.({ files })) return Promise.resolve(false);
-  return navigator.share({ files }).then(() => true, () => false);
+  return shareFiles(files).then(r => r === true);
 }
 async function markInPhotos(ids) {
   for (const id of ids) { const r = await DB.get(id); if (r && !r.inPhotos) { r.inPhotos = true; await DB.put(r); } }
@@ -528,11 +630,8 @@ async function openDetail(id) {
       $('#dShare', body).onclick = async () => {
         const file = new File([u8 ? tagJpeg(u8, rec) : rec.blob], fileName(rec), { type: 'image/jpeg' });
         const text = `${rec.title || 'Blume'}${rec.note ? '\n' + rec.note : ''}\nhttps://maps.apple.com/?ll=${rec.lat},${rec.lng}`;
-        try {
-          if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], text });
-          else if (navigator.share) await navigator.share({ text });
-          else toast('Teilen wird nicht unterstützt');
-        } catch (e) { }
+        const r = await shareFiles([file], text);
+        if (r === null) { if (navigator.share) navigator.share({ text }).catch(() => { }); else toast('Teilen wird nicht unterstützt'); }
       };
       const dp = $('#dPhotos', body);
       if (dp) dp.onclick = async () => {
@@ -676,7 +775,7 @@ async function openMenu() {
       $('#mDlBB', body).onclick = () => openDownload('bb');
       $('#mClear', body).onclick = async () => {
         if (!confirm('Alle gespeicherten Kartenkacheln löschen? Deine Fotos bleiben erhalten.')) return;
-        await caches.delete(TILES_CACHE); toast('Offline-Karten gelöscht'); openMenu();
+        await TileStore.clear(); toast('Offline-Karten gelöscht'); openMenu();
       };
       $('#mImgs', body).onclick = () => { $('#inGallery').value = ''; $('#inGallery').click(); };
       $('#mExport', body).onclick = exportBackup;
@@ -739,6 +838,7 @@ function planDownload(bounds, zmax, keys) {
 }
 function* tileIter(jobs) { for (const j of jobs) for (let x = j.x0; x <= j.x1; x++) for (let y = j.y0; y <= j.y1; y++) yield tileUrl(j.def, j.z, x, y); }
 
+
 const corsMode = {}; // pro Host merken, ob CORS klappt
 async function fetchTile(url) {
   const host = new URL(url).host;
@@ -751,7 +851,7 @@ async function fetchTile(url) {
 
 let dl = null; // laufender Download
 function openDownload(mode) {
-  if (!('caches' in window)) return toast('Offline-Speicher wird nicht unterstützt');
+  if (!TileStore.ok) return toast('Offline-Speicher wird nicht unterstützt');
   const bounds = mode === 'bb' ? BB_BOUNDS : map.getBounds();
   const inBB = clipBB(bounds);
   if (!inBB) return toast('Der Ausschnitt liegt außerhalb von Brandenburg/Berlin');
@@ -811,20 +911,18 @@ async function runDownload(plan, onProg) {
   dl = { total: plan.count, done: 0, failed: 0, bytes: 0, stop: false };
   let lock = null;
   try { lock = await navigator.wakeLock?.request('screen'); } catch { }
-  const cache = await caches.open(TILES_CACHE);
   const it = tileIter(plan.jobs);
   const worker = async () => {
     for (let n = it.next(); !n.done && !dl.stop; n = it.next()) {
       const url = n.value;
       try {
-        if (!(await cache.match(url))) {
-          let r = null;
-          for (let a = 0; a < 3 && !r; a++) {
-            try { const x = await fetchTile(url); if (x.ok || x.type === 'opaque') r = x; } catch { await new Promise(s => setTimeout(s, 800 * (a + 1))); }
+        if (!(await TileStore.has(url))) {
+          let ok = false;
+          for (let a = 0; a < 3 && !ok; a++) {
+            try { dl.bytes += await TileStore.download(url); ok = true; }
+            catch (e) { if (e && e.name === 'QuotaExceededError') throw e; await new Promise(s => setTimeout(s, 800 * (a + 1))); }
           }
-          if (!r) throw new Error('fail');
-          if (r.type !== 'opaque') { const b = await r.clone().blob(); dl.bytes += b.size; }
-          await cache.put(url, r);
+          if (!ok) throw new Error('fail');
         }
       } catch (e) {
         dl.failed++;
@@ -891,9 +989,7 @@ async function saveFile(blob, name, label) {
     <div class="row"><button class="btn primary" id="sv">${ICON.share}Sichern</button></div>`,
     body => {
       $('#sv', body).onclick = async () => {
-        try {
-          if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file] }); return; }
-        } catch (e) { if (e.name === 'AbortError') return; }
+        if ((await shareFiles([file])) !== null) return;
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(a.href), 60000);
       };
@@ -967,7 +1063,7 @@ const netBadge = () => $('#offlineBadge').classList.toggle('show', !navigator.on
 addEventListener('online', netBadge); addEventListener('offline', netBadge); netBadge();
 $('#offlineBadge').textContent = 'Offline – gespeicherte Karten';
 
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+if (!NATIVE && 'serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW', e));
 }
 loadEntries().then(migrate).catch(e => toast('Datenbank-Fehler: ' + e.message, 5000));

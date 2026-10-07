@@ -95,6 +95,49 @@ Gut zu wissen: Viele Stellungen sind Bodendenkmale, und in den alten
 Kampfgebieten liegt noch Munition im Boden. Vor Ort nichts ausgraben oder
 aufheben.
 
+## Echte iPhone-App mit AltStore (kostenlos, Windows-PC)
+Die App wird bei jeder Änderung automatisch von GitHub gebaut. Neueste Version:
+https://github.com/PhilipPlew280313/Blumenkarte/releases/latest/download/Blumenkarte.ipa
+
+**Einmalig am Windows-PC**
+1. **iTunes** und **iCloud** direkt von apple.com laden, nicht aus dem
+   Microsoft Store. Mit deiner Apple-ID anmelden.
+2. **AltServer** von altstore.io laden (AltStore Classic, Windows), entpacken,
+   `Setup.exe` ausführen, dann AltServer **als Administrator** starten.
+   Zugriff auf „private Netzwerke“ erlauben.
+3. iPhone per Kabel anschließen, entsperren, „Vertrauen“ tippen.
+4. In iTunes beim iPhone **„Mit diesem iPhone über WLAN synchronisieren“**
+   einschalten.
+5. Unten rechts in der Taskleiste aufs AltServer-Symbol → **Install AltStore**
+   → dein iPhone → Apple-ID und Passwort eingeben.
+
+**Einmalig am iPhone**
+6. Einstellungen → Allgemein → VPN & Geräteverwaltung → deine Apple-ID →
+   **Vertrauen**.
+7. Einstellungen → Datenschutz & Sicherheit → **Entwicklermodus** einschalten,
+   iPhone startet neu, „Einschalten“ bestätigen.
+8. In Safari den Link oben öffnen → `Blumenkarte.ipa` wird in „Dateien“
+   geladen.
+9. **AltStore** öffnen → Reiter **Meine Apps** → **+** oben links →
+   `Blumenkarte.ipa` wählen. Fertig, das Blumen-Icon erscheint.
+
+**Automatisch erneuern (alle 7 Tage)**
+- AltServer am PC laufen lassen (startet mit Windows, wenn du ihn in den
+  Autostart legst), PC und iPhone im **selben WLAN**.
+- Am iPhone: Einstellungen → AltStore → **Hintergrundaktualisierung** an.
+- AltStore erneuert dann selbst. Zeigt AltStore „läuft in 1 Tag ab“, einmal
+  in AltStore auf **Alle aktualisieren** tippen.
+- Mit kostenloser Apple-ID: höchstens 3 solcher Apps gleichzeitig
+  (AltStore selbst zählt mit).
+
+**Neue Version installieren:** Link oben erneut laden und in AltStore wieder
+über **+** installieren. Deine Fotos und Zeichnungen bleiben erhalten.
+Wichtig: die App **nicht löschen**, sonst ist der App-Speicher weg.
+
+Die App-Version hat eigene Daten, getrennt von der Web-Version auf dem
+Home-Bildschirm. Zum Umziehen: in der Web-Version **Backup-Datei erstellen**,
+in der App **Backup-Datei wiederherstellen**.
+
 ## Kartendaten
 Luftbild (DOP20) und Geländemodell (DGM 1 m): © GeoBasis-DE/LGB,
 Datenlizenz Deutschland – Namensnennung 2.0. Deckt Brandenburg und Berlin ab.

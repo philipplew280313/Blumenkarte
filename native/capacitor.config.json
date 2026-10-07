@@ -1,0 +1,10 @@
+{
+  "appId": "de.philipplew.blumenkarte",
+  "appName": "Blumenkarte",
+  "webDir": "www",
+  "backgroundColor": "#14130f",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#14130f"
+  }
+}

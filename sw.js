@@ -1,5 +1,5 @@
 /* Service Worker: App läuft offline, Kartenkacheln werden gespeichert */
-const SHELL_CACHE = 'shell-v3';
+const SHELL_CACHE = 'shell-v4';
 const TILES_CACHE = 'tiles-v1';
 const SHELL = ['./', 'index.html', 'app.js', 'draw.js', 'manifest.webmanifest', 'vendor/leaflet.js', 'vendor/leaflet.css', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 const TILE_HOSTS = ['isk.geobasis-bb.de', 'server.arcgisonline.com', 'tile.openstreetmap.org'];
