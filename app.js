@@ -342,6 +342,155 @@ function checkHistHint() { // Thüringen hat kein historisches Kartenbild
   if (regionState('th', z, x, y) === 2) { histHint = true; toast('Für Thüringen gibt es kein historisches Luftbild als Karte – nur Brandenburg (1953) und Sachsen (1965)', 4200); }
 }
 map.on('moveend', checkHistHint);
+
+/* ---------- Flurstück antippen → amtliche Angaben (ALKIS-Abfrage beim Land) ---------- */
+const FLUR_INFO = {
+  bb: { land: 'Brandenburg', url: SRC.bbFlur.url, layers: 'adv_alkis_flurstuecke', fmt: 'text/xml;subtype=gml/3.1.1', html: 'text/html;vendorStyle=lgb', kataster: 'Katasteramt des Landkreises bzw. der kreisfreien Stadt' },
+  sn: { land: 'Sachsen', url: SRC.snFlur.url, layers: 'Flurstueck', fmt: 'application/geo+json', html: 'text/html', kataster: 'Vermessungsamt des Landkreises bzw. der kreisfreien Stadt' },
+  th: { land: 'Thüringen', url: SRC.thFlur.url, layers: 'adv_alkis_flurstuecke', fmt: 'application/vnd.ogc.gml', html: 'text/html', kataster: 'Thüringer Landesamt für Bodenmanagement und Geoinformation (TLBG)' }
+};
+function regionAt(ll) {
+  const z = 14, n = 2 ** z, x = Math.floor((ll.lng + 180) / 360 * n), r = ll.lat * Math.PI / 180;
+  const y = Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n);
+  const st = Object.keys(REGIONS).map(k => [k, regionState(k, z, x, y)]);
+  return (st.find(s => s[1] === 2) || st.filter(s => s[1] === 1).sort((a, b) => pip(ll.lat, ll.lng, REGIONS[b[0]].poly) - pip(ll.lat, ll.lng, REGIONS[a[0]].poly))[0] || [null])[0];
+}
+function gfiUrl(cfg, ll, fmt) {
+  const p = L.Projection.SphericalMercator.project(ll), h = 25.25; // 101 px à 0,5 m → Maßstab passt für alle Dienste
+  const bbox = [p.x - h, p.y - h, p.x + h, p.y + h].map(v => v.toFixed(2)).join(',');
+  return `${cfg.url}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo&LAYERS=${cfg.layers}&QUERY_LAYERS=${cfg.layers}&STYLES=&CRS=EPSG%3A3857&BBOX=${bbox}&WIDTH=101&HEIGHT=101&I=50&J=50&FORMAT=image%2Fpng&FEATURE_COUNT=1&INFO_FORMAT=${encodeURIComponent(fmt)}`;
+}
+async function fetchText(url) {
+  if (NATIVE) { // in der App ohne Browser-Sperren (CORS) direkt abfragen
+    const r = await withTimeout(callNative('CapacitorHttp', 'request', { url, method: 'GET', responseType: 'text' }), 20000, 'Server antwortet nicht');
+    if (r.status && r.status >= 400) throw new Error('Server-Fehler ' + r.status);
+    return typeof r.data === 'string' ? r.data : JSON.stringify(r.data);
+  }
+  const r = await withTimeout(fetch(url, { mode: 'cors', credentials: 'omit' }), 20000, 'Server antwortet nicht');
+  if (!r.ok) throw new Error('Server-Fehler ' + r.status);
+  return r.text();
+}
+// Koordinaten aus GML/GeoJSON → [lat, lng]
+function toLatLng(a, b) {
+  if (Math.abs(a) > 400 || Math.abs(b) > 400) { const q = L.Projection.SphericalMercator.unproject(L.point(a, b)); return [q.lat, q.lng]; }
+  return a > 45 && a < 57 && b > 4 && b < 17 ? [a, b] : [b, a];
+}
+function parseFlurInfo(text) {
+  const t = text.trim();
+  if (t[0] === '{') {
+    const j = JSON.parse(t), f = (j.features || [])[0]; if (!f) return null;
+    let rings = [];
+    const g = f.geometry;
+    if (g) rings = (g.type === 'Polygon' ? [g.coordinates[0]] : g.type === 'MultiPolygon' ? g.coordinates.map(p => p[0]) : []).map(r => r.map(c => toLatLng(c[0], c[1])));
+    return { props: f.properties || {}, rings };
+  }
+  const doc = new DOMParser().parseFromString(t, 'text/xml');
+  if (doc.getElementsByTagName('parsererror').length) return null;
+  const all = [...doc.getElementsByTagName('*')];
+  if (all.some(e => /ServiceException|ExceptionReport/.test(e.localName))) throw new Error('Der Dienst meldet einen Fehler');
+  const mem = all.find(e => /^(featureMember|member)$/.test(e.localName));
+  const feat = mem ? mem.firstElementChild : all.find(e => e.children.length && /flurst/i.test(e.localName) && e !== doc.documentElement);
+  if (!feat) return null;
+  const props = {}, rings = [];
+  const isGeom = e => /gml/i.test(e.namespaceURI || '') || /geom|position|boundedBy|extent|Surface|Polygon|shape/i.test(e.localName);
+  (function walk(el) {
+    for (const c of el.children) {
+      if (isGeom(c)) continue;
+      if (c.children.length) walk(c);
+      else { const v = c.textContent.trim(); if (v && !(c.localName in props)) props[c.localName] = v; }
+      for (const a of c.attributes || []) if (!/^(xmlns|gml:id|srsName|xlink)/.test(a.name) && a.value && !(a.name in props) && !c.children.length) props[c.localName + ' ' + a.name] = a.value;
+    }
+  })(feat);
+  for (const pl of feat.getElementsByTagNameNS('*', 'posList')) {
+    const n = pl.textContent.trim().split(/\s+/).map(Number), r = [];
+    for (let i = 0; i + 1 < n.length; i += 2) r.push(toLatLng(n[i], n[i + 1]));
+    if (r.length > 2) rings.push(r);
+  }
+  if (!rings.length) for (const cs of feat.getElementsByTagNameNS('*', 'coordinates')) {
+    const r = cs.textContent.trim().split(/\s+/).map(p => p.split(',').map(Number)).filter(p => p.length >= 2).map(p => toLatLng(p[0], p[1]));
+    if (r.length > 2) rings.push(r);
+  }
+  return Object.keys(props).length ? { props, rings } : null;
+}
+function ringArea(r) { // m², genügt als Kontrollwert
+  const P = r.map(c => L.Projection.SphericalMercator.project(L.latLng(c)));
+  let a = 0; for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length]; a += p.x * q.y - q.x * p.y; }
+  const k = Math.cos(r[0][0] * Math.PI / 180); return Math.abs(a / 2) * k * k;
+}
+const fmtArea = m2 => `${Math.round(m2).toLocaleString('de-DE')} m² <span class="sub" style="display:inline">(${(m2 / 10000).toLocaleString('de-DE', { maximumFractionDigits: 4 })} ha)</span>`;
+const prettyKey = k => k.replace(/^(adv_|ax_)/i, '').replace(/_/g, ' ').replace(/([a-zäöü])([A-ZÄÖÜ])/g, '$1 $2').replace(/ae/g, 'ä').replace(/oe/g, 'ö').replace(/ue(?!r)/g, 'ü').replace(/^./, c => c.toUpperCase());
+function pickProp(props, re, not) { for (const [k, v] of Object.entries(props)) if (re.test(k) && !(not && not.test(k))) return [k, v]; return null; }
+const flurHL = L.layerGroup().addTo(map);
+let flurSheet = false;
+map.on('click', e => {
+  if (!store.get('flur', false) || draw || document.body.classList.contains('placing') || (document.body.classList.contains('sheet-open') && !flurSheet)) return;
+  if (e.originalEvent && e.originalEvent.target && e.originalEvent.target.closest && e.originalEvent.target.closest('.leaflet-marker-icon,.leaflet-interactive')) return;
+  if (map.getZoom() < FLUR.minZoom) return toast('Zum Antippen eines Flurstücks näher heranzoomen', 2000);
+  openFlurInfo(e.latlng);
+});
+async function openFlurInfo(ll) {
+  const rk = regionAt(ll), cfg = FLUR_INFO[rk];
+  if (!cfg) return toast('Flurstücke gibt es nur für ' + AREA_TXT, 2400);
+  flurHL.clearLayers();
+  const dot = L.circleMarker(ll, { radius: 6, color: '#fff', weight: 2, fillColor: '#8b5cf6', fillOpacity: 1, interactive: false }).addTo(flurHL);
+  openSheet('Flurstück', `<div class="empty" id="fiWait">Frage das Liegenschaftskataster ${esc(cfg.land)} ab …</div>`, () => { flurSheet = true; return () => { flurSheet = false; flurHL.clearLayers(); }; });
+  const myBody = $('#fiWait');
+  let info = null, err = null;
+  try { info = parseFlurInfo(await fetchText(gfiUrl(cfg, ll, cfg.fmt))); } catch (e) { err = e; }
+  if (!myBody.isConnected) return; // Fenster schon zu oder neues Flurstück angetippt
+  const htmlUrl = gfiUrl(cfg, ll, cfg.html);
+  if (!info) {
+    if (err && !NATIVE && !navigator.onLine) return void ($('#shBody').innerHTML = `<div class="empty">Offline – die Flurstücks-Angaben gibt es nur mit Internet.</div>`);
+    if (!err) return void ($('#shBody').innerHTML = `<div class="empty">Hier wurde kein Flurstück gefunden. Tippe etwas weiter innen auf die Fläche.</div>`);
+    // Web-Version: Browser blockt die direkte Abfrage → Antwort des Amts direkt anzeigen
+    $('#shBody').innerHTML = `<iframe src="${esc(htmlUrl)}" style="width:100%;height:55vh;border:0;border-radius:12px;background:#fff"></iframe>
+      <p class="hint">Angaben direkt vom Liegenschaftskataster ${esc(cfg.land)}.${NATIVE ? '' : ' In der iPhone-App erscheinen sie aufbereitet.'}</p>${ownerHint(cfg)}`;
+    return;
+  }
+  const P = info.props, used = new Set();
+  const take = (re, not) => { const r = pickProp(P, re, not); if (r) used.add(r[0]); return r && r[1]; };
+  const kennz = take(/kennz/i), gemName = take(/gemarkung.*(name|bez)|^gemarkung$/i, /schl|nummer|nr$|kennz/i), gemNr = take(/gemarkung/i, /name|bez/i);
+  const flur = take(/^flur(nummer|nr)?$|flurnummer/i), zaehler = take(/z(ä|ae)hler/i), nenner = take(/nenner/i);
+  const nummer = take(/flurst(ü|ue)cksnummer|flstnr|^nummer$|^label$/i);
+  const flaeche = take(/amtliche.?fl(ä|ae)che|fl(ä|ae)che|area/i, /einheit|unit|uom/i);
+  const gemeinde = take(/gemeinde/i, /schl|kennz|nr$/i), kreis = take(/kreis/i, /schl|kennz|nr$/i), lage = take(/lage|adresse|stra(ss|ß)e|lagebez/i);
+  const nutzung = take(/nutzung/i);
+  const areaNum = flaeche && parseFloat(/,/.test(flaeche) ? String(flaeche).replace(/\./g, '').replace(',', '.') : flaeche);
+  const geomArea = info.rings.length ? info.rings.reduce((s, r) => s + ringArea(r), 0) : 0;
+  if (info.rings.length) {
+    dot.remove();
+    L.polygon(info.rings, { color: '#8b5cf6', weight: 3, fillColor: '#8b5cf6', fillOpacity: .18, interactive: false }).addTo(flurHL);
+  }
+  const nr = nummer || (zaehler ? zaehler + (nenner && nenner !== '0' ? '/' + nenner : '') : '');
+  const row = (l, v) => v ? `<div><span class="grow">${l}<span class="sub" style="font-size:16px;color:var(--ink);margin-top:2px">${v}</span></span></div>` : '';
+  const rest = Object.entries(P).filter(([k]) => !used.has(k));
+  $('#shTitle').textContent = 'Flurstück ' + (nr || '');
+  $('#shBody').innerHTML = `
+    <div class="list">
+      ${row('Größe (amtlich)', areaNum ? fmtArea(areaNum) : '')}
+      ${!areaNum && geomArea ? row('Größe (aus der Grenze berechnet)', 'ca. ' + fmtArea(geomArea)) : ''}
+      ${row('Gemarkung', esc(gemName ? [gemName, gemNr && gemNr !== gemName ? `(${gemNr})` : ''].filter(Boolean).join(' ') : gemNr ? 'Nr. ' + gemNr : ''))}
+      ${row('Flur', esc(flur))}
+      ${row('Flurstücksnummer', esc(nr))}
+      ${row('Flurstückskennzeichen', esc(kennz))}
+      ${row('Lage', esc(lage))}
+      ${row('Gemeinde', esc([gemeinde, kreis].filter(Boolean).join(', ')))}
+      ${row('Nutzung', esc(nutzung))}
+    </div>
+    ${ownerHint(cfg)}
+    ${rest.length ? `<div class="sec">Alle Angaben</div><div class="list">${rest.map(([k, v]) => `<div><span class="grow">${esc(prettyKey(k))}<span class="sub">${esc(v)}</span></span></div>`).join('')}</div>` : ''}
+    <div class="row"><button class="btn" id="fiCopy">Angaben kopieren</button>${info.rings.length ? '<button class="btn" id="fiZoom">Ganz zeigen</button>' : ''}</div>
+    <p class="hint">Quelle: Liegenschaftskataster (ALKIS) ${esc(cfg.land)}, Stand laut Amt. Rechtsverbindlich ist nur ein Auszug vom Katasteramt.</p>`;
+  $('#fiZoom')?.addEventListener('click', () => { hideSheet(); map.flyToBounds(L.latLngBounds(info.rings.flat()).pad(0.3), { maxZoom: 19, duration: .6 }); setTimeout(showSheet, 1400); });
+  $('#fiCopy').onclick = async () => {
+    const txt = [`Flurstück ${nr}`, gemName && 'Gemarkung ' + gemName, flur && 'Flur ' + flur, kennz && 'Kennzeichen ' + kennz, areaNum ? Math.round(areaNum).toLocaleString('de-DE') + ' m²' : '', `${ll.lat.toFixed(6)}, ${ll.lng.toFixed(6)}`].filter(Boolean).join('\n');
+    try { await navigator.clipboard.writeText(txt); toast('Kopiert'); } catch { toast('Kopieren nicht möglich'); }
+  };
+}
+function ownerHint(cfg) {
+  return `<div class="sec">Eigentümer</div><div class="list"><div>${ICON.info}<span class="grow">Nicht öffentlich
+    <span class="sub">Wem ein Flurstück gehört, steht im Grundbuch und nicht in den frei abrufbaren Katasterdaten. Auskunft bekommst du mit „berechtigtem Interesse“ (z. B. Kauf- oder Pachtanfrage, Nachbarschaft, Erlaubnis für Sondengänge einholen): beim Grundbuchamt (Amtsgericht) oder als Auszug beim ${esc(cfg.kataster)}. Oft hilft auch die Gemeinde weiter.</span></span></div></div>`;
+}
 // Relief verstärken: Kontrast des Geländemodells anheben, damit flache Gräben hervortreten
 function applyRelief() {
   const l = layerObjs.dgm, c = l && l.getContainer && l.getContainer(); if (!c) return;
@@ -1398,4 +1547,4 @@ async function migrate() {
   }
   if (n) loadEntries();
 }
-window.__bk = { map, entries: () => entries, LAYERS, FLUR, tileUrls, regionState, planDownload, readExif, makeZip, readZip };
+window.__bk = { map, entries: () => entries, LAYERS, FLUR, parseFlurInfo, regionAt, gfiUrl, tileUrls, regionState, planDownload, readExif, makeZip, readZip };

@@ -98,6 +98,13 @@ Karte. Bleibt an, wenn du zwischen Luftbild, Historisch und Gelände wechselst.
 Die Ämter liefern sie erst ab Zoom 15, deshalb zoomt die App beim Einschalten
 näher heran. Offline speicherbar wie die anderen Karten.
 
+**Flurstück antippen** (bei eingeschalteten Flurstücken): zeigt die amtlichen
+Angaben – Größe, Gemarkung, Flur, Flurstücksnummer, Kennzeichen, je nach Land
+auch Lage und Gemeinde – und umrandet das Flurstück. Braucht Internet.
+Den **Eigentümer** gibt es nicht: der steht im Grundbuch und ist nicht öffentlich.
+Auskunft gibt es mit berechtigtem Interesse beim Grundbuchamt (Amtsgericht) oder
+beim Katasteramt des Landkreises.
+
 ## Offline-Karten
 - `•••` → **Sichtbaren Ausschnitt speichern** oder **Ganz Brandenburg & Berlin** /
   **Ganz Sachsen** / **Ganz Thüringen** (Übersicht). Ebenen und Detailstufe wählen → Herunterladen.
