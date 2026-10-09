@@ -61,16 +61,18 @@ const ICON = {
 };
 
 /* ============================================================
-   Kartenebenen – Mosaik aus Brandenburg/Berlin (LGB) und Sachsen (GeoSN)
+   Kartenebenen – Mosaik aus Brandenburg/Berlin (LGB), Sachsen (GeoSN) und Thüringen (TLBG)
    ============================================================ */
 const E = 20037508.342789244;
 const TILES_CACHE = 'tiles-v1';
 const REGIONS = {
   bb: { name: 'Brandenburg & Berlin', poly: REGION_POLY.bb },
-  sn: { name: 'Sachsen', poly: REGION_POLY.sn }
+  sn: { name: 'Sachsen', poly: REGION_POLY.sn },
+  th: { name: 'Thüringen', poly: REGION_POLY.th }
 };
 for (const r of Object.values(REGIONS)) r.bounds = L.latLngBounds(r.poly);
-const ALL_BOUNDS = L.latLngBounds(REGIONS.bb.bounds.getSouthWest(), REGIONS.bb.bounds.getNorthEast()).extend(REGIONS.sn.bounds).pad(0.01);
+const ALL_BOUNDS = L.latLngBounds(REGIONS.bb.bounds.getSouthWest(), REGIONS.bb.bounds.getNorthEast()).extend(REGIONS.sn.bounds).extend(REGIONS.th.bounds).pad(0.01);
+const AREA_TXT = 'Brandenburg, Berlin, Sachsen und Thüringen';
 const DL_DE = '<a href="https://www.govdata.de/dl-de/by-2-0">dl-de/by-2-0</a>';
 const SRC = {
   bbDop: { region: 'bb', url: 'https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms', layers: 'bebb_dop20c' },
@@ -78,16 +80,25 @@ const SRC = {
   bbDgm: { region: 'bb', url: 'https://isk.geobasis-bb.de/mapproxy/dgm/service/wms', layers: 'dgm' },
   snDgm: { region: 'sn', url: 'https://geodienste.sachsen.de/wms_geosn_hoehe/guest', layers: 'relief_standard' },
   bb53: { region: 'bb', url: 'https://isk.geobasis-bb.de/mapproxy/dop100g_1953/service/wms', layers: 'bb_dop100g_1953' },
-  sn65: { region: 'sn', url: 'https://geodienste.sachsen.de/wms_geosn_satbild_1965/guest', layers: 'historische_sb_1965' }
+  sn65: { region: 'sn', url: 'https://geodienste.sachsen.de/wms_geosn_satbild_1965/guest', layers: 'historische_sb_1965' },
+  thDop: { region: 'th', url: 'https://www.geoproxy.geoportal-th.de/geoproxy/services/DOP', layers: 'th_dop', minZ: 8 },
+  thDgm: { region: 'th', url: 'https://www.geoproxy.geoportal-th.de/geoproxy/services/DGM', layers: 'DGM2', minZ: 9 },
+  // Flurstücke: überall die gelbe Darstellung – gut sichtbar auf Luftbild und Gelände
+  bbFlur: { region: 'bb', url: 'https://isk.geobasis-bb.de/ows/alkis_wms', layers: 'adv_alkis_flurstuecke', styles: 'Gelb' },
+  snFlur: { region: 'sn', url: 'https://geodienste.sachsen.de/wms_geosn_flurstuecke/guest', layers: 'Flurstueck,Flurstuecksnummer', styles: 'flurstueck_gelb,flurstuecksnummer_gelb' },
+  thFlur: { region: 'th', url: 'https://www.geoproxy.geoportal-th.de/geoproxy/services/adv_alkis_wms_th_gelb', layers: 'adv_alkis_flurstuecke', styles: 'gelb' }
 };
+const TH_ATTR = ' · Thüringen © GDI-Th, <a href="https://creativecommons.org/licenses/by/4.0/deed.de">CC BY 4.0</a>';
 const LAYERS = {
-  dop: { label: 'Luftbild aktuell', sub: 'Brandenburg, Berlin & Sachsen · 20 cm', short: 'Luftbild', sources: [SRC.bbDop, SRC.snDop], maxNative: 18, offline: true, kb: 75, attr: 'Luftbild © GeoBasis-DE/LGB, © GeoSN, ' + DL_DE },
-  hist: { label: 'Historisch', sub: 'Brandenburg 1953 (Luftbild) · Sachsen 1965 (Satellit)', short: 'Historisch', sources: [SRC.bb53, SRC.sn65], maxNative: 16, offline: true, kb: 40, attr: 'BB 1953 © GeoBasis-DE/LGB, ' + DL_DE + ' · SN 1965 © GeoSN/USGS, CC BY-NC-SA 2.0' },
-  dgm: { label: 'Geländemodell', sub: 'Brandenburg & Berlin 1 m · Sachsen 2 m', short: 'Gelände', sources: [SRC.bbDgm, SRC.snDgm], maxNative: 17, offline: true, kb: 45, attr: 'DGM © GeoBasis-DE/LGB, © GeoSN, ' + DL_DE },
+  dop: { label: 'Luftbild aktuell', sub: 'Brandenburg, Berlin, Sachsen & Thüringen · 20 cm', short: 'Luftbild', sources: [SRC.bbDop, SRC.snDop, SRC.thDop], maxNative: 18, offline: true, kb: 75, attr: 'Luftbild © GeoBasis-DE/LGB, © GeoSN, ' + DL_DE + TH_ATTR },
+  hist: { label: 'Historisch', sub: 'Brandenburg 1953 (Luftbild) · Sachsen 1965 (Satellit) · für Thüringen gibt es keins als Karte', short: 'Historisch', sources: [SRC.bb53, SRC.sn65], maxNative: 16, offline: true, kb: 40, attr: 'BB 1953 © GeoBasis-DE/LGB, ' + DL_DE + ' · SN 1965 © GeoSN/USGS, CC BY-NC-SA 2.0' },
+  dgm: { label: 'Geländemodell', sub: 'Brandenburg & Berlin 1 m · Sachsen & Thüringen 2 m', short: 'Gelände', sources: [SRC.bbDgm, SRC.snDgm, SRC.thDgm], maxNative: 17, offline: true, kb: 45, attr: 'DGM © GeoBasis-DE/LGB, © GeoSN, ' + DL_DE + TH_ATTR },
   esri: { label: 'Satellit weltweit (Esri)', sub: 'Nur online', xyz: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxNative: 19, attr: 'Esri, Maxar, Earthstar Geographics' },
   osm: { label: 'OpenStreetMap', sub: 'Nur online', xyz: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', maxNative: 19, attr: '© OpenStreetMap-Mitwirkende' }
 };
 // „Hybrid“: Wege und Ortsnamen durchsichtig über jeder Karte
+// Flurstücke (ALKIS): gelbe Grenzen und Nummern, ab Zoom 15
+const FLUR = { key: 'flur', sources: [SRC.bbFlur, SRC.snFlur, SRC.thFlur], png: true, minZoom: 15, maxNative: 19, kb: 14, attr: 'Flurstücke © GeoBasis-DE/LGB, © GeoSN, ' + DL_DE + TH_ATTR };
 const HYBRID = [
   { key: 'hyWege', xyz: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', maxNative: 19, kb: 12, attr: '' },
   { key: 'hyOrte', xyz: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', maxNative: 19, kb: 12, attr: 'Wege & Orte: Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende' }
@@ -139,12 +150,13 @@ function wmsUrl(src, z, x, y, png) {
   const size = 2 * E / Math.pow(2, z), minx = -E + x * size, maxy = E - y * size;
   const bbox = [minx, maxy - size, minx + size, maxy].map(n => n.toFixed(2)).join(',');
   // 512 px pro Kachel → scharf auf dem Retina-Display
-  return `${src.url}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${src.layers}&STYLES=&CRS=EPSG%3A3857&FORMAT=${png ? 'image%2Fpng&TRANSPARENT=TRUE' : 'image%2Fjpeg'}&WIDTH=512&HEIGHT=512&BBOX=${bbox}`;
+  return `${src.url}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${src.layers}&STYLES=${src.styles || ''}&CRS=EPSG%3A3857&FORMAT=${png ? 'image%2Fpng&TRANSPARENT=TRUE' : 'image%2Fjpeg'}&WIDTH=512&HEIGHT=512&BBOX=${bbox}`;
 }
 // Alle Bild-Adressen für eine Kachel (unten → oben). An der Landesgrenze zwei durchsichtige Bilder übereinander.
 function tileUrls(def, z, x, y) {
   if (def.xyz) return [def.xyz.replace('{z}', z).replace('{x}', x).replace('{y}', y)];
-  const parts = def.sources.map(s => [s, regionState(s.region, z, x, y)]).filter(p => p[1]);
+  if (def.minZoom && z < def.minZoom) return [];
+  const parts = def.sources.filter(s => !s.minZ || z >= s.minZ).map(s => [s, regionState(s.region, z, x, y)]).filter(p => p[1]);
   const png = def.png || parts.length > 1;
   return parts.map(([s]) => wmsUrl(s, z, x, y, png));
 }
@@ -214,7 +226,7 @@ const viewQueue = [], viewSeen = new Set();
 let viewBusy = 0;
 function queueViewSave(urls) {
   if (!NATIVE || !store.get('saveViewed', true) || !TileStore.base) return;
-  for (const u of urls) if (!viewSeen.has(u) && /isk\.geobasis-bb\.de|geodienste\.sachsen\.de|arcgisonline\.com\/ArcGIS\/rest\/services\/Reference/.test(u)) { viewSeen.add(u); viewQueue.push(u); }
+  for (const u of urls) if (!viewSeen.has(u) && /isk\.geobasis-bb\.de|geodienste\.sachsen\.de|geoproxy\.geoportal-th\.de|arcgisonline\.com\/ArcGIS\/rest\/services\/Reference/.test(u)) { viewSeen.add(u); viewQueue.push(u); }
   if (viewQueue.length > 400) viewQueue.splice(0, viewQueue.length - 400);
   pumpViewQueue();
 }
@@ -290,6 +302,7 @@ function setLayer(key) {
   currentLayer.addTo(map).bringToBack();
   applyRelief();
   store.set('layer', key);
+  if (key === 'hist') setTimeout(() => { histHint = false; checkHistHint(); }, 0);
   document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.layer === key));
 }
 setLayer(store.get('layer', 'dop'));
@@ -304,6 +317,31 @@ function setHybrid(on) {
 }
 setHybrid(store.get('hybrid', false));
 $('#btnHybrid').addEventListener('click', () => { setHybrid(!store.get('hybrid', false)); toast(store.get('hybrid', false) ? 'Hybrid an: Wege & Orte über der Karte' : 'Hybrid aus', 1600); });
+/* Flurstücke: gelbe Grenzen über jeder Karte, ab Zoom 15 */
+map.createPane('flur'); map.getPane('flur').style.zIndex = 340; map.getPane('flur').style.pointerEvents = 'none';
+const flurLayer = new DefTileLayer(FLUR, { pane: 'flur', minZoom: FLUR.minZoom });
+function setFlur(on) {
+  store.set('flur', on);
+  on ? flurLayer.addTo(map) : map.removeLayer(flurLayer);
+  $('#btnFlur').classList.toggle('on', on);
+  $('#btnFlur').setAttribute('aria-pressed', on);
+}
+setFlur(store.get('flur', false));
+$('#btnFlur').addEventListener('click', () => {
+  const on = !store.get('flur', false); setFlur(on);
+  if (!on) return toast('Flurstücke aus', 1400);
+  if (!clipAll(map.getBounds())) return toast('Flurstücke gibt es für ' + AREA_TXT, 2600);
+  if (map.getZoom() < FLUR.minZoom) { toast('Flurstücke an – zoome näher heran', 2200); map.flyTo(map.getCenter(), FLUR.minZoom, { duration: .8 }); }
+  else toast('Flurstücke an', 1400);
+});
+let histHint = false;
+function checkHistHint() { // Thüringen hat kein historisches Kartenbild
+  if (histHint || store.get('layer', 'dop') !== 'hist') return;
+  const c = map.getCenter(), z = 12, n = 2 ** z;
+  const x = Math.floor((c.lng + 180) / 360 * n), r = c.lat * Math.PI / 180, y = Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n);
+  if (regionState('th', z, x, y) === 2) { histHint = true; toast('Für Thüringen gibt es kein historisches Luftbild als Karte – nur Brandenburg (1953) und Sachsen (1965)', 4200); }
+}
+map.on('moveend', checkHistHint);
 // Relief verstärken: Kontrast des Geländemodells anheben, damit flache Gräben hervortreten
 function applyRelief() {
   const l = layerObjs.dgm, c = l && l.getContainer && l.getContainer(); if (!c) return;
@@ -854,7 +892,7 @@ $('#btnLayers').addEventListener('click', () => {
     <div class="sec">Zusatzinfo</div>
     <div class="list"><label><input type="checkbox" id="lyYears" ${store.get('years', false) ? 'checked' : ''}><span class="grow">Abdeckung Luftbild 1953<span class="sub">Übersicht der LGB, wo Bilder vom Sommer 1953 vorliegen (ca. 90 % von Brandenburg)</span></span></label></div>
     <div id="lyLegend" ${store.get('years', false) ? '' : 'hidden'} style="margin-top:10px;background:#fff;border-radius:12px;padding:10px"><img src="${YEARS_LEGEND}" alt="Legende" style="max-width:100%;display:block" onerror="this.parentNode.innerHTML='<span style=&quot;color:#333;font-size:13px&quot;>Legende nur online verfügbar</span>'"></div>
-    <p class="hint">Schnell wechseln: oben auf „Luftbild“, „Historisch“ oder „Gelände“ tippen. „Hybrid“ oben links legt Wege und Orte über jede Karte.</p>`,
+    <p class="hint">Schnell wechseln: oben auf „Luftbild“, „Historisch“ oder „Gelände“ tippen. „Hybrid“ oben links legt Wege und Orte über jede Karte, „Flurstücke“ darunter die Grundstücksgrenzen.</p>`,
     body => {
       $('#lyDraw', body).onclick = enterDraw;
       $('#lyRelief', body).addEventListener('input', e => {
@@ -896,6 +934,7 @@ async function openMenu() {
       <button id="mDlView">${ICON.down}<span class="grow">Sichtbaren Ausschnitt speichern<span class="sub">Luftbild, Historisch und Gelände bis zur vollen Schärfe</span></span></button>
       <button id="mDlBB">${ICON.map}<span class="grow">Ganz Brandenburg & Berlin<span class="sub">Übersicht fürs ganze Land</span></span></button>
       <button id="mDlSN">${ICON.map}<span class="grow">Ganz Sachsen<span class="sub">Übersicht fürs ganze Land</span></span></button>
+      <button id="mDlTH">${ICON.map}<span class="grow">Ganz Thüringen<span class="sub">Übersicht fürs ganze Land</span></span></button>
     </div>
     ${getAreas().length ? `<div class="sec">Gespeicherte Gebiete</div><div class="list" id="mAreas">${getAreas().map(a => `<button data-area="${a.id}">${ICON.map}<span class="grow">${esc(a.name)}<span class="sub">bis Zoom ${a.zmax} · ${a.keys.map(k => DL_KEYS[k]).join(', ')} · ${a.status === 'fertig' ? '<span style="color:var(--leaf)">✓ vollständig</span>' : `<span style="color:#ff9f6b">${a.status === 'unvollständig' ? fmtN(a.failed || 0) + ' fehlen' : 'unterbrochen'}</span>`}</span></span></button>`).join('')}</div>` : ''}
     <div class="list" style="margin-top:10px">
@@ -911,12 +950,13 @@ async function openMenu() {
       <button id="mShapesIn">${ICON.up}<span class="grow">Zeichnungen importieren (GeoJSON)<span class="sub">z. B. in QGIS nachgezeichnete Gräben</span></span></button>
     </div>
     <div class="sec">Info</div>
-    <div class="list"><div>${ICON.info}<span class="grow">${entries.length} Blumen gespeichert<span class="sub">Kartendaten: © GeoBasis-DE/LGB (dl-de/by-2-0), © GeoSN (dl-de/by-2-0; 1965: CC BY-NC-SA 2.0, USGS), Esri, OpenStreetMap-Mitwirkende</span></span></div></div>`,
+    <div class="list"><div>${ICON.info}<span class="grow">${entries.length} Blumen gespeichert<span class="sub">Kartendaten: © GeoBasis-DE/LGB (dl-de/by-2-0), © GeoSN (dl-de/by-2-0; 1965: CC BY-NC-SA 2.0, USGS), © GDI-Th (CC BY 4.0), Esri, OpenStreetMap-Mitwirkende</span></span></div></div>`,
     body => {
       storageInfo().then(t => { const el = $('#mStore', body); if (el) el.textContent = t; });
       $('#mDlView', body).onclick = () => openDownload('view');
       $('#mDlBB', body).onclick = () => openDownload('bb');
       $('#mDlSN', body).onclick = () => openDownload('sn');
+      $('#mDlTH', body).onclick = () => openDownload('th');
       $('#mAreas', body)?.addEventListener('click', e => { const b = e.target.closest('[data-area]'); if (b) openArea(getAreas().find(a => a.id === b.dataset.area)); });
       const sv = $('#mSaveViewed', body); if (sv) sv.onchange = e => store.set('saveViewed', e.target.checked);
       let clearArmed = false;
@@ -977,8 +1017,8 @@ function tileRange(b, z) {
   const x0 = lon2x(b.getWest(), n), x1 = lon2x(b.getEast(), n), y0 = lat2y(b.getNorth(), n), y1 = lat2y(b.getSouth(), n);
   return { z, x0, x1, y0, y1, count: (x1 - x0 + 1) * (y1 - y0 + 1) };
 }
-const DL_KEYS = { dop: 'Luftbild', hist: 'Historisch', dgm: 'Gelände', hybrid: 'Wege & Orte' };
-const keyDefs = k => k === 'hybrid' ? HYBRID : [LAYERS[k]];
+const DL_KEYS = { dop: 'Luftbild', hist: 'Historisch', dgm: 'Gelände', hybrid: 'Wege & Orte', flur: 'Flurstücke' };
+const keyDefs = k => k === 'hybrid' ? HYBRID : k === 'flur' ? [FLUR] : [LAYERS[k]];
 function countUrls(def, r) { // bei riesigen Bereichen nur stichprobenartig zählen
   if (def.xyz) return r.count;
   const step = r.count > 120000 ? Math.ceil(Math.sqrt(r.count / 60000)) : 1;
@@ -1030,17 +1070,17 @@ let dl = null; // laufender Download
 function openDownload(mode) {
   if (!TileStore.ok) return toast('Offline-Speicher wird auf diesem Gerät nicht unterstützt');
   if (dl) return openDlStatus();
-  const whole = mode === 'bb' || mode === 'sn';
+  const whole = !!REGIONS[mode];
   const bounds = whole ? REGIONS[mode].bounds : map.getBounds();
-  if (!clipAll(bounds)) return toast('Der Ausschnitt liegt außerhalb von Brandenburg, Berlin und Sachsen');
+  if (!clipAll(bounds)) return toast('Der Ausschnitt liegt außerhalb von ' + AREA_TXT);
   const minZ = whole ? 9 : Math.max(10, Math.min(18, Math.ceil(map.getZoom())));
   const maxZ = whole ? 16 : 18, defZ = whole ? 13 : 18;
-  const sel = { dop: true, hist: true, dgm: true, hybrid: store.get('hybrid', false) };
+  const sel = { dop: true, hist: mode !== 'th', dgm: true, hybrid: store.get('hybrid', false), flur: store.get('flur', false) };
   const c = bounds.getCenter();
-  const name = mode === 'bb' ? 'Ganz Brandenburg & Berlin' : mode === 'sn' ? 'Ganz Sachsen' : `Ausschnitt bei ${c.lat.toFixed(3).replace('.', ',')}° N, ${c.lng.toFixed(3).replace('.', ',')}° O`;
+  const name = mode === 'bb' ? 'Ganz Brandenburg & Berlin' : whole ? 'Ganz ' + REGIONS[mode].name : `Ausschnitt bei ${c.lat.toFixed(3).replace('.', ',')}° N, ${c.lng.toFixed(3).replace('.', ',')}° O`;
   openSheet(whole ? name : 'Ausschnitt speichern', `
     <div class="list">
-      ${Object.entries(DL_KEYS).map(([k, l]) => `<label><input type="checkbox" data-k="${k}" ${sel[k] ? 'checked' : ''}><span class="grow">${l}${k === 'hist' ? '<span class="sub">volle Schärfe schon bei Zoom 16</span>' : k === 'hybrid' ? '<span class="sub">für den Hybrid-Knopf</span>' : ''}</span></label>`).join('')}
+      ${Object.entries(DL_KEYS).map(([k, l]) => `<label><input type="checkbox" data-k="${k}" ${sel[k] ? 'checked' : ''}><span class="grow">${l}${k === 'hist' ? '<span class="sub">volle Schärfe schon bei Zoom 16</span>' : k === 'hybrid' ? '<span class="sub">für den Hybrid-Knopf</span>' : k === 'flur' ? '<span class="sub">ab Zoom 15 – bei „ganzes Land“ sehr viele Kacheln</span>' : ''}</span></label>`).join('')}
     </div>
     <label class="field"><span>Detailstufe bis Zoom <b id="zv"></b></span><input class="range" id="zr" type="range" min="${minZ}" max="${maxZ}" step="1" value="${Math.min(maxZ, Math.max(minZ, defZ))}"></label>
     <div class="est"><span id="estN"></span><span id="estB"></span></div>
@@ -1358,4 +1398,4 @@ async function migrate() {
   }
   if (n) loadEntries();
 }
-window.__bk = { map, entries: () => entries, LAYERS, tileUrls, regionState, planDownload, readExif, makeZip, readZip };
+window.__bk = { map, entries: () => entries, LAYERS, FLUR, tileUrls, regionState, planDownload, readExif, makeZip, readZip };

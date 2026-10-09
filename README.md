@@ -69,25 +69,38 @@ deine **Fotomediathek** (und damit in iCloud-Fotos):
   Nur wenn du das App-Icon vom Home-Bildschirm löschst, ist der App-Speicher weg.
 
 ## Karten
-Oben umschalten: **Luftbild** · **Historisch** · **Gelände**. Alle drei gibt es für
-**Brandenburg, Berlin und Sachsen**; an der Landesgrenze setzt die App die
-Bilder beider Länder nahtlos zusammen.
+Oben umschalten: **Luftbild** · **Historisch** · **Gelände**. Die Karten gibt es für
+**Brandenburg, Berlin, Sachsen und Thüringen**; an den Landesgrenzen setzt die App
+die Bilder der Länder nahtlos zusammen.
 
-| Karte | Brandenburg & Berlin (LGB) | Sachsen (GeoSN) |
-|---|---|---|
-| Luftbild | aktuell, 20 cm | aktuell, 20 cm |
-| Historisch | Luftbild Sommer 1953, 1 m, s/w | Satellitenbild 1965 (Corona), 2 m, s/w |
-| Gelände | DGM-Schummerung 1 m | DGM-Schummerung 2 m |
+| Karte | Brandenburg & Berlin (LGB) | Sachsen (GeoSN) | Thüringen (TLBG) |
+|---|---|---|---|
+| Luftbild | aktuell, 20 cm | aktuell, 20 cm | aktuell, 20 cm |
+| Historisch | Luftbild Sommer 1953, 1 m, s/w | Satellitenbild 1965 (Corona), 2 m, s/w | – |
+| Gelände | DGM-Schummerung 1 m | DGM-Schummerung 2 m | DGM-Schummerung 2 m |
 
 Für Sachsen ist 1965 das älteste frei verfügbare Kartenbild nach 1945
-(ältere Luftbilder liegen nur als Einzelbilder beim Bundesarchiv).
+(ältere Luftbilder liegen nur als Einzelbilder beim Bundesarchiv). Das Bild ist
+von Haus aus grob (Spionagesatellit, ca. 2–3 m). Stellenweise wirken Straßen und
+Häuser doppelt, vermutlich weil GeoSN zwei Überflüge (März und Mai 1965) zusammengesetzt hat,
+die nicht ganz deckungsgleich sind. Das steckt im Bild des Amts und lässt sich in
+der App nicht wegrechnen.
+
+Für Thüringen gibt es keine historische Luftbildkarte zum Einbinden. Die Luftbilder
+von 1945 und 1953 bietet das Geoportal Thüringen nur als einzelne Bilder zum
+Herunterladen an.
 
 **Hybrid** (Knopf oben links): legt Wege und Ortsnamen durchsichtig über jede
 Karte. Bleibt an, wenn du zwischen Luftbild, Historisch und Gelände wechselst.
 
+**Flurstücke** (Knopf darunter): zeigt die Flurstücksgrenzen mit Nummern in Gelb
+über jeder Karte, für Brandenburg, Berlin, Sachsen und Thüringen (amtliches ALKIS).
+Die Ämter liefern sie erst ab Zoom 15, deshalb zoomt die App beim Einschalten
+näher heran. Offline speicherbar wie die anderen Karten.
+
 ## Offline-Karten
 - `•••` → **Sichtbaren Ausschnitt speichern** oder **Ganz Brandenburg & Berlin** /
-  **Ganz Sachsen** (Übersicht). Ebenen und Detailstufe wählen → Herunterladen.
+  **Ganz Sachsen** / **Ganz Thüringen** (Übersicht). Ebenen und Detailstufe wählen → Herunterladen.
 - Der Download läuft weiter, wenn du das Fenster schließt; unten auf der Karte
   zeigt ein **Fortschritts-Chip** den Stand. Antippen → Details oder Abbrechen.
 - Jede Kachel wird geprüft (echtes Bild?). Fehlgeschlagene werden mit Grund
@@ -101,7 +114,7 @@ Karte. Bleibt an, wenn du zwischen Luftbild, Historisch und Gelände wechselst.
   gröbere Kachel vergrößert, statt einer leeren Fläche.
 
 ## Intro
-Beim Start läuft ein kurzes Intro (1,2 s). Antippen überspringt es.
+Beim Start läuft ein kurzes Intro (3 s). Antippen überspringt es.
 
 ## Gräben & Stellungen nachzeichnen
 - Seitenknopf mit der Zickzack-Linie → **Zeichenmodus**.
@@ -171,5 +184,7 @@ in der App **Backup-Datei wiederherstellen**.
 ## Kartendaten
 - Brandenburg & Berlin: © GeoBasis-DE/LGB, Datenlizenz Deutschland – Namensnennung 2.0
 - Sachsen: © GeoSN, dl-de/by-2-0; Satellitenbild 1965: © GeoSN/USGS, CC BY-NC-SA 2.0
+- Thüringen: © GDI-Th, CC BY 4.0
+- Flurstücke: ALKIS von LGB, GeoSN (dl-de/by-2-0) und GDI-Th (CC BY 4.0)
 - Hybrid (Wege & Orte): Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende
 - Landesgrenzen: deutschlandGeoJSON, © GeoBasis-DE/BKG

@@ -45,9 +45,11 @@ input,textarea{font:inherit;color:var(--ink)}
 .glass{background:var(--glass);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);border:1px solid var(--line);box-shadow:0 6px 24px rgba(0,0,0,.35)}
 #topbar{position:fixed;left:12px;right:12px;top:calc(var(--sat) + 10px);display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px;pointer-events:none;z-index:500}
 #topbar .seg{justify-self:center}
-#btnHybrid{pointer-events:auto;height:42px;padding:0 13px;border-radius:14px;font-size:14px;font-weight:700;letter-spacing:.2px;color:var(--ink-2);display:flex;align-items:center;gap:6px;transition:background .2s,color .2s}
-#btnHybrid svg{width:17px;height:17px}
-#btnHybrid.on{background:var(--accent);color:#fff;border-color:transparent}
+#btnHybrid,#btnFlur{pointer-events:auto;height:42px;padding:0 13px;border-radius:14px;font-size:14px;font-weight:700;letter-spacing:.2px;color:var(--ink-2);display:flex;align-items:center;gap:6px;transition:background .2s,color .2s}
+#btnHybrid svg,#btnFlur svg{width:17px;height:17px}
+#btnHybrid.on,#btnFlur.on{background:var(--accent);color:#fff;border-color:transparent}
+#btnFlur{position:absolute;left:0;top:50px;height:38px;font-size:13.5px;padding:0 11px}
+.leaflet-flur-pane{filter:drop-shadow(0 0 1px rgba(0,0,0,.75))}
 .seg{pointer-events:auto;display:flex;padding:3px;border-radius:14px;gap:2px}
 .seg button{padding:9px 11px;border-radius:11px;font-size:14px;font-weight:600;color:var(--ink-2);letter-spacing:.1px;transition:background .2s,color .2s}
 .seg button.on{background:var(--ink);color:#16150f}
@@ -176,7 +178,7 @@ body.sheet-open #sheet{transform:none}
 #viewer button{position:absolute;top:calc(var(--sat) + 10px);right:12px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center}
 #viewer svg{width:18px;height:18px}
 
-#toast{position:fixed;left:50%;top:calc(var(--sat) + 60px);transform:translate(-50%,-20px);opacity:0;z-index:1000;padding:10px 16px;border-radius:12px;font-size:14px;font-weight:500;transition:opacity .25s,transform .25s;pointer-events:none;max-width:88vw;text-align:center}
+#toast{position:fixed;left:50%;top:calc(var(--sat) + 108px);transform:translate(-50%,-20px);opacity:0;z-index:1000;padding:10px 16px;border-radius:12px;font-size:14px;font-weight:500;transition:opacity .25s,transform .25s;pointer-events:none;max-width:88vw;text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 .hidden-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 </style>
@@ -193,6 +195,7 @@ body.sheet-open #sheet{transform:none}
     <button data-layer="hist">Historisch</button>
     <button data-layer="dgm">Gelände</button>
   </div>
+  <button id="btnFlur" class="glass" aria-pressed="false" aria-label="Flurstücke einblenden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5l8-2 10 4-2 13-9 1-7-5z"/><path d="M11 3l-1 18M3 13l17-3"/></svg>Flurstücke</button>
 </div>
 
 <div id="offlineBadge" class="glass">Offline</div>

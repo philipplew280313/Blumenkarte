@@ -224,7 +224,7 @@
   }
 
   /* ---------- Ablauf ---------- */
-  const T_SWEEP0 = 110, T_SWEEP1 = 640, T_ZOOM0 = 700, T_END = 1200;
+  const T_SWEEP0 = 450, T_SWEEP1 = 1900, T_ZOOM0 = 2250, T_END = 3000; // 3 s
   const A0 = rad(-30), A1 = rad(30);
   const ease = t => (1 - Math.cos(Math.PI * t)) / 2; // gleichmäßiger Schwung, damit man den Detektor sieht
   let A, B, T, t0 = 0, done = false;
@@ -264,14 +264,14 @@
           ctx.lineCap = 'round';
           for (const [lw, a] of [[10, 0.12], [3, 0.35], [1.2, 0.95]]) { ctx.strokeStyle = `rgba(167,139,250,${a})`; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(pivot[0], pivot[1]); ctx.lineTo(pivot[0] + dx * F, pivot[1] + dy * F); ctx.stroke(); }
           for (let r = 0; r < 3; r++) {
-            const ph = ((t / 150) + r / 3) % 1;
+            const ph = ((t / 320) + r / 3) % 1;
             ctx.strokeStyle = `rgba(167,139,250,${0.55 * (1 - ph)})`; ctx.lineWidth = 1.4;
             ctx.beginPath(); ctx.ellipse(cx, cy, 30 + ph * 70, 19 + ph * 45, Math.atan2(dy, dx) + Math.PI / 2, 0, TAU); ctx.stroke();
           }
         }
       }
       ctx.drawImage(T, 0, 0, W, H);
-      if (t >= T_SWEEP0 - 60 && u < 1) detector(ctx, ang);
+      if (t >= T_SWEEP0 - 120 && u < 1) detector(ctx, ang);
     } else {
       // Zoom durch das „D“
       const u = Math.min(1, (t - T_ZOOM0) / (T_END - T_ZOOM0)), e = u * u * u, s = Math.exp(Math.log(90) * e);
@@ -288,5 +288,5 @@
     A = forest(); B = dgm(); T = lettering();
     requestAnimationFrame(frame);
   } catch (e) { console.warn('Intro', e); finish(); }
-  if (!dbg) setTimeout(finish, 4000); // Sicherheitsnetz
+  if (!dbg) setTimeout(finish, 6000); // Sicherheitsnetz
 })();
