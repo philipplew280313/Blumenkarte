@@ -273,12 +273,35 @@ const DefTileLayer = L.TileLayer.extend({
       bounds: def.sources ? ALL_BOUNDS : undefined, keepBuffer: 3
     }, opts || {}));
   },
-  getTileUrl(c) { return tileUrls(this.def, c.z, c.x, c.y)[0] || ''; },
+  // Alte Kacheln länger behalten (bis 4 Stufen tiefer / 8 höher), bis die neuen wirklich da sind
+  _pruneTiles() {
+    if (!this._map) return;
+    const zoom = this._map.getZoom();
+    if (zoom > this.options.maxZoom || zoom < this.options.minZoom) return this._removeAllTiles();
+    for (const k in this._tiles) this._tiles[k].retain = this._tiles[k].current;
+    for (const k in this._tiles) {
+      const t = this._tiles[k];
+      if (t.current && !t.active) { const c = t.coords; if (!this._retainParent(c.x, c.y, c.z, c.z - 8)) this._retainChildren(c.x, c.y, c.z, c.z + 4); }
+    }
+    for (const k in this._tiles) if (!this._tiles[k].retain) this._removeTile(k);
+  },
+  // Hintergrund: auch die Umgebung schon laden (3×3 Bildschirme), damit Rauszoomen sofort etwas zeigt
+  _getTiledPixelBounds(center) {
+    const b = L.TileLayer.prototype._getTiledPixelBounds.call(this, center);
+    if (!this.options.preload) return b;
+    const s = b.getSize();
+    return L.bounds(b.min.subtract(s), b.max.add(s));
+  },
+  getTileUrl(c) { return tileUrls(this.def, c.z + (this.options.zoomOffset || 0), c.x, c.y)[0] || ''; },
   createTile(coords, done) {
+    if (this.options.zoomOffset) coords = { x: coords.x, y: coords.y, z: coords.z + this.options.zoomOffset };
     const el = document.createElement('div'); el.className = 'mt';
+    // Leaflet wirft beim Zoomen alle alten Kacheln weg, deren Bild noch nicht „complete“ ist.
+    // Ein div hat das Feld nicht → ohne diese Markierung war die Karte beim Zoomen kurz leer.
+    el.complete = false;
     const urls = tileUrls(this.def, coords.z, coords.x, coords.y);
-    if (!urls.length) { setTimeout(() => done(null, el), 0); return el; }
-    loadTileStack(el, this.def, coords, urls).then(ok => done(ok ? null : new Error('Kachel fehlt'), el));
+    if (!urls.length) { el.complete = true; setTimeout(() => done(null, el), 0); return el; }
+    loadTileStack(el, this.def, coords, urls).then(ok => { el.complete = true; done(ok ? null : new Error('Kachel fehlt'), el); });
     return el;
   }
 });
@@ -292,13 +315,20 @@ map.attributionControl.setPrefix(false);
 map.attributionControl.getContainer().addEventListener('click', e => { if (e.target.tagName !== 'A') e.currentTarget.classList.toggle('open'); });
 L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
 
-const layerObjs = {};
-let currentLayer = null;
+const layerObjs = {}, backObjs = {};
+let currentLayer = null, currentBack = null;
+/* Grober Hintergrund (3 Stufen gröber, 8× so große Kacheln): lädt schnell und deckt beim Zoomen
+   und Verschieben die Fläche ab, bis die scharfen Kacheln da sind – nie mehr leerer Bildschirm. */
+map.createPane('backdrop'); map.getPane('backdrop').style.zIndex = 150; map.getPane('backdrop').style.pointerEvents = 'none';
+const makeBack = def => new DefTileLayer(def, { pane: 'backdrop', tileSize: 2048, zoomOffset: -3, minZoom: 9, maxNativeZoom: def.maxNative + 3, keepBuffer: 2, preload: true, attribution: '' });
 function setLayer(key) {
   if (key === 'h53') key = 'hist';
   if (!LAYERS[key]) key = 'dop';
   if (currentLayer) map.removeLayer(currentLayer);
+  if (currentBack) map.removeLayer(currentBack);
   currentLayer = layerObjs[key] ||= new DefTileLayer(LAYERS[key]);
+  currentBack = backObjs[key] ||= makeBack(LAYERS[key]);
+  currentBack.addTo(map);
   currentLayer.addTo(map).bringToBack();
   applyRelief();
   store.set('layer', key);
@@ -493,9 +523,11 @@ function ownerHint(cfg) {
 }
 // Relief verstärken: Kontrast des Geländemodells anheben, damit flache Gräben hervortreten
 function applyRelief() {
-  const l = layerObjs.dgm, c = l && l.getContainer && l.getContainer(); if (!c) return;
   const v = store.get('relief', 1);
-  c.style.filter = v > 1 ? `contrast(${v}) brightness(${(1 + (v - 1) * .08).toFixed(2)})` : '';
+  for (const l of [layerObjs.dgm, backObjs.dgm]) {
+    const c = l && l.getContainer && l.getContainer(); if (!c) continue;
+    c.style.filter = v > 1 ? `contrast(${v}) brightness(${(1 + (v - 1) * .08).toFixed(2)})` : '';
+  }
 }
 let yearsLayer = null;
 function setYears(on) {
