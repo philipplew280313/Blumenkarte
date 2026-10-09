@@ -68,10 +68,40 @@ deine **Fotomediathek** (und damit in iCloud-Fotos):
 - **App-Updates** (neue Dateien an dieselbe Adresse hochladen) löschen nichts.
   Nur wenn du das App-Icon vom Home-Bildschirm löschst, ist der App-Speicher weg.
 
-## Luftbild 1953
-Oben auf **„1953“** tippen. Historische Luftbilder der LGB, schwarz-weiß, 1 m
-Auflösung. Geflogen im Sommer 1953, deckt ca. 90 % von Brandenburg ab.
-Wo Bilder vorliegen, zeigt Ebenen-Knopf → „Abdeckung Luftbild 1953“.
+## Karten
+Oben umschalten: **Luftbild** · **Historisch** · **Gelände**. Alle drei gibt es für
+**Brandenburg, Berlin und Sachsen**; an der Landesgrenze setzt die App die
+Bilder beider Länder nahtlos zusammen.
+
+| Karte | Brandenburg & Berlin (LGB) | Sachsen (GeoSN) |
+|---|---|---|
+| Luftbild | aktuell, 20 cm | aktuell, 20 cm |
+| Historisch | Luftbild Sommer 1953, 1 m, s/w | Satellitenbild 1965 (Corona), 2 m, s/w |
+| Gelände | DGM-Schummerung 1 m | DGM-Schummerung 2 m |
+
+Für Sachsen ist 1965 das älteste frei verfügbare Kartenbild nach 1945
+(ältere Luftbilder liegen nur als Einzelbilder beim Bundesarchiv).
+
+**Hybrid** (Knopf oben links): legt Wege und Ortsnamen durchsichtig über jede
+Karte. Bleibt an, wenn du zwischen Luftbild, Historisch und Gelände wechselst.
+
+## Offline-Karten
+- `•••` → **Sichtbaren Ausschnitt speichern** oder **Ganz Brandenburg & Berlin** /
+  **Ganz Sachsen** (Übersicht). Ebenen und Detailstufe wählen → Herunterladen.
+- Der Download läuft weiter, wenn du das Fenster schließt; unten auf der Karte
+  zeigt ein **Fortschritts-Chip** den Stand. Antippen → Details oder Abbrechen.
+- Jede Kachel wird geprüft (echtes Bild?). Fehlgeschlagene werden mit Grund
+  angezeigt und lassen sich mit **Fehlende nachladen** nachholen.
+- Wird die App mittendrin geschlossen, bietet sie beim nächsten Start
+  **Fortsetzen** an.
+- **Gespeicherte Gebiete** stehen im Menü: zeigen, prüfen/fortsetzen, löschen.
+- In der App werden **angesehene Karten automatisch mitgespeichert**
+  (abschaltbar im Menü).
+- Zoomst du offline weiter hinein, als gespeichert ist, zeigt die App die
+  gröbere Kachel vergrößert, statt einer leeren Fläche.
+
+## Intro
+Beim Start läuft ein kurzes Intro (1,2 s). Antippen überspringt es.
 
 ## Gräben & Stellungen nachzeichnen
 - Seitenknopf mit der Zickzack-Linie → **Zeichenmodus**.
@@ -139,5 +169,7 @@ Home-Bildschirm. Zum Umziehen: in der Web-Version **Backup-Datei erstellen**,
 in der App **Backup-Datei wiederherstellen**.
 
 ## Kartendaten
-Luftbild (DOP20) und Geländemodell (DGM 1 m): © GeoBasis-DE/LGB,
-Datenlizenz Deutschland – Namensnennung 2.0. Deckt Brandenburg und Berlin ab.
+- Brandenburg & Berlin: © GeoBasis-DE/LGB, Datenlizenz Deutschland – Namensnennung 2.0
+- Sachsen: © GeoSN, dl-de/by-2-0; Satellitenbild 1965: © GeoSN/USGS, CC BY-NC-SA 2.0
+- Hybrid (Wege & Orte): Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende
+- Landesgrenzen: deutschlandGeoJSON, © GeoBasis-DE/BKG

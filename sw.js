@@ -1,8 +1,8 @@
 /* Service Worker: App läuft offline, Kartenkacheln werden gespeichert */
-const SHELL_CACHE = 'shell-v4';
+const SHELL_CACHE = 'shell-v5';
 const TILES_CACHE = 'tiles-v1';
-const SHELL = ['./', 'index.html', 'app.js', 'draw.js', 'manifest.webmanifest', 'vendor/leaflet.js', 'vendor/leaflet.css', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
-const TILE_HOSTS = ['isk.geobasis-bb.de', 'server.arcgisonline.com', 'tile.openstreetmap.org'];
+const SHELL = ['./', 'index.html', 'app.js', 'draw.js', 'regions.js', 'intro.js', 'manifest.webmanifest', 'vendor/leaflet.js', 'vendor/leaflet.css', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
+const TILE_HOSTS = ['isk.geobasis-bb.de', 'geodienste.sachsen.de', 'server.arcgisonline.com', 'tile.openstreetmap.org'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL_CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

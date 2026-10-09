@@ -36,7 +36,7 @@ jobs:
       - name: App-Dateien übernehmen
         run: |
           mkdir -p native/www
-          cp -R index.html app.js draw.js manifest.webmanifest vendor icons native/www/
+          cp -R index.html app.js draw.js regions.js intro.js sw.js manifest.webmanifest vendor icons native/www/
 
       - name: Capacitor installieren
         working-directory: native

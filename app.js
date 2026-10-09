@@ -61,49 +61,109 @@ const ICON = {
 };
 
 /* ============================================================
-   Kartenebenen
+   Kartenebenen – Mosaik aus Brandenburg/Berlin (LGB) und Sachsen (GeoSN)
    ============================================================ */
 const E = 20037508.342789244;
-const BB_BOUNDS = L.latLngBounds([51.30, 11.20], [53.62, 14.85]); // Brandenburg + Berlin
 const TILES_CACHE = 'tiles-v1';
-const LAYERS = {
-  dop: { label: 'Luftbild Brandenburg/Berlin', short: 'Luftbild', kind: 'wms', url: 'https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms', layers: 'bebb_dop20c', format: 'image/jpeg', maxNative: 18, bb: true, offline: true, kb: 75, attr: 'Luftbild © GeoBasis-DE/LGB, <a href="https://www.govdata.de/dl-de/by-2-0">dl-de/by-2-0</a>' },
-  dgm: { label: 'Geländemodell (DGM 1 m)', short: 'Gelände', kind: 'wms', url: 'https://isk.geobasis-bb.de/mapproxy/dgm/service/wms', layers: 'dgm', format: 'image/jpeg', maxNative: 17, bb: true, offline: true, kb: 45, attr: 'DGM © GeoBasis-DE/LGB, <a href="https://www.govdata.de/dl-de/by-2-0">dl-de/by-2-0</a>' },
-  h53: { label: 'Luftbild 1953 (Brandenburg, s/w)', short: '1953', kind: 'wms', url: 'https://isk.geobasis-bb.de/mapproxy/dop100g_1953/service/wms', layers: 'bb_dop100g_1953', format: 'image/jpeg', maxNative: 16, bb: true, offline: true, kb: 40, attr: 'Luftbild 1953 © GeoBasis-DE/LGB, <a href="https://www.govdata.de/dl-de/by-2-0">dl-de/by-2-0</a>' },
-  esri: { label: 'Satellit weltweit (Esri)', kind: 'xyz', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxNative: 19, attr: 'Esri, Maxar, Earthstar Geographics' },
-  osm: { label: 'OpenStreetMap (Wege, Orte)', kind: 'xyz', url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', maxNative: 19, attr: '© OpenStreetMap-Mitwirkende' }
+const REGIONS = {
+  bb: { name: 'Brandenburg & Berlin', poly: REGION_POLY.bb },
+  sn: { name: 'Sachsen', poly: REGION_POLY.sn }
 };
+for (const r of Object.values(REGIONS)) r.bounds = L.latLngBounds(r.poly);
+const ALL_BOUNDS = L.latLngBounds(REGIONS.bb.bounds.getSouthWest(), REGIONS.bb.bounds.getNorthEast()).extend(REGIONS.sn.bounds).pad(0.01);
+const DL_DE = '<a href="https://www.govdata.de/dl-de/by-2-0">dl-de/by-2-0</a>';
+const SRC = {
+  bbDop: { region: 'bb', url: 'https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms', layers: 'bebb_dop20c' },
+  snDop: { region: 'sn', url: 'https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest', layers: 'sn_dop_020' },
+  bbDgm: { region: 'bb', url: 'https://isk.geobasis-bb.de/mapproxy/dgm/service/wms', layers: 'dgm' },
+  snDgm: { region: 'sn', url: 'https://geodienste.sachsen.de/wms_geosn_hoehe/guest', layers: 'relief_standard' },
+  bb53: { region: 'bb', url: 'https://isk.geobasis-bb.de/mapproxy/dop100g_1953/service/wms', layers: 'bb_dop100g_1953' },
+  sn65: { region: 'sn', url: 'https://geodienste.sachsen.de/wms_geosn_satbild_1965/guest', layers: 'historische_sb_1965' }
+};
+const LAYERS = {
+  dop: { label: 'Luftbild aktuell', sub: 'Brandenburg, Berlin & Sachsen · 20 cm', short: 'Luftbild', sources: [SRC.bbDop, SRC.snDop], maxNative: 18, offline: true, kb: 75, attr: 'Luftbild © GeoBasis-DE/LGB, © GeoSN, ' + DL_DE },
+  hist: { label: 'Historisch', sub: 'Brandenburg 1953 (Luftbild) · Sachsen 1965 (Satellit)', short: 'Historisch', sources: [SRC.bb53, SRC.sn65], maxNative: 16, offline: true, kb: 40, attr: 'BB 1953 © GeoBasis-DE/LGB, ' + DL_DE + ' · SN 1965 © GeoSN/USGS, CC BY-NC-SA 2.0' },
+  dgm: { label: 'Geländemodell', sub: 'Brandenburg & Berlin 1 m · Sachsen 2 m', short: 'Gelände', sources: [SRC.bbDgm, SRC.snDgm], maxNative: 17, offline: true, kb: 45, attr: 'DGM © GeoBasis-DE/LGB, © GeoSN, ' + DL_DE },
+  esri: { label: 'Satellit weltweit (Esri)', sub: 'Nur online', xyz: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxNative: 19, attr: 'Esri, Maxar, Earthstar Geographics' },
+  osm: { label: 'OpenStreetMap', sub: 'Nur online', xyz: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', maxNative: 19, attr: '© OpenStreetMap-Mitwirkende' }
+};
+// „Hybrid“: Wege und Ortsnamen durchsichtig über jeder Karte
+const HYBRID = [
+  { key: 'hyWege', xyz: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', maxNative: 19, kb: 12, attr: '' },
+  { key: 'hyOrte', xyz: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', maxNative: 19, kb: 12, attr: 'Wege & Orte: Esri, HERE, Garmin, © OpenStreetMap-Mitwirkende' }
+];
 
-function tileUrl(def, z, x, y) {
-  if (def.kind === 'xyz') return def.url.replace('{z}', z).replace('{x}', x).replace('{y}', y);
-  const size = 2 * E / Math.pow(2, z);
-  const minx = -E + x * size, maxy = E - y * size;
-  const bbox = [minx, maxy - size, minx + size, maxy].map(n => n.toFixed(2)).join(',');
-  // 512 px pro Kachel → gestochen scharf auf dem Retina-Display
-  return `${def.url}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${def.layers}&STYLES=&CRS=EPSG%3A3857&FORMAT=${encodeURIComponent(def.format)}${def.transparent ? '&TRANSPARENT=TRUE' : ''}&WIDTH=512&HEIGHT=512&BBOX=${bbox}`;
+/* ---------- Welche Quelle gehört zu welcher Kachel? ---------- */
+const tile2lat = (y, n) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI;
+function tileRect(z, x, y) { const n = 2 ** z; return { s: tile2lat(y + 1, n), n: tile2lat(y, n), w: x / n * 360 - 180, e: (x + 1) / n * 360 - 180 }; }
+function pip(lat, lng, P) {
+  let inside = false;
+  for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+    const a = P[i], b = P[j];
+    if ((a[0] > lat) !== (b[0] > lat) && lng < (b[1] - a[1]) * (lat - a[0]) / (b[0] - a[0]) + a[1]) inside = !inside;
+  }
+  return inside;
 }
-// Info-Ebene der LGB zum Luftbild 1953 (Aktualitäts-/Abdeckungsübersicht)
-const YEARS_DEF = { kind: 'wms', url: 'https://isk.geobasis-bb.de/mapproxy/dop100g_1953/service/wms', layers: 'bb_dop100g-53_info', format: 'image/png', transparent: true, maxNative: 14, bb: true, attr: '' };
-const YEARS_LEGEND = `${YEARS_DEF.url}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&FORMAT=image%2Fpng&LAYER=${YEARS_DEF.layers}&SLD_VERSION=1.1.0`;
+function segCross(p1, p2, p3, p4) {
+  const d = (a, b, c) => (c[1] - a[1]) * (b[0] - a[0]) - (b[1] - a[1]) * (c[0] - a[0]);
+  return ((d(p3, p4, p1) > 0) !== (d(p3, p4, p2) > 0)) && ((d(p1, p2, p3) > 0) !== (d(p1, p2, p4) > 0));
+}
+function segHitsRect(a, b, r) {
+  const inR = p => p[0] >= r.s && p[0] <= r.n && p[1] >= r.w && p[1] <= r.e;
+  if (inR(a) || inR(b)) return true;
+  if (Math.max(a[0], b[0]) < r.s || Math.min(a[0], b[0]) > r.n || Math.max(a[1], b[1]) < r.w || Math.min(a[1], b[1]) > r.e) return false;
+  const c = [[r.s, r.w], [r.s, r.e], [r.n, r.e], [r.n, r.w]];
+  for (let k = 0; k < 4; k++) if (segCross(a, b, c[k], c[(k + 1) % 4])) return true;
+  return false;
+}
+const regionCache = new Map();
+// 0 = außerhalb, 1 = Grenze läuft durch die Kachel, 2 = komplett innerhalb
+function regionState(rk, z, x, y) {
+  const key = rk + z + '/' + x + '/' + y;
+  let v = regionCache.get(key); if (v !== undefined) return v;
+  if (z > 6) { const p = regionState(rk, z - 1, x >> 1, y >> 1); if (p !== 1) { regionCache.set(key, p); return p; } }
+  const R = REGIONS[rk], t = tileRect(z, x, y), m = 0.006; // ~500 m Sicherheitsrand, weil die Grenze vereinfacht ist
+  const rb = R.bounds;
+  if (t.n < rb.getSouth() - m || t.s > rb.getNorth() + m || t.e < rb.getWest() - m || t.w > rb.getEast() + m) v = 0;
+  else {
+    const rr = { s: t.s - m, n: t.n + m, w: t.w - m, e: t.e + m }, P = R.poly;
+    let hit = false;
+    for (let i = 0, j = P.length - 1; i < P.length && !hit; j = i++) hit = segHitsRect(P[j], P[i], rr);
+    v = hit ? 1 : pip((t.s + t.n) / 2, (t.w + t.e) / 2, P) ? 2 : 0;
+  }
+  if (regionCache.size > 300000) regionCache.clear();
+  regionCache.set(key, v);
+  return v;
+}
+function wmsUrl(src, z, x, y, png) {
+  const size = 2 * E / Math.pow(2, z), minx = -E + x * size, maxy = E - y * size;
+  const bbox = [minx, maxy - size, minx + size, maxy].map(n => n.toFixed(2)).join(',');
+  // 512 px pro Kachel → scharf auf dem Retina-Display
+  return `${src.url}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${src.layers}&STYLES=&CRS=EPSG%3A3857&FORMAT=${png ? 'image%2Fpng&TRANSPARENT=TRUE' : 'image%2Fjpeg'}&WIDTH=512&HEIGHT=512&BBOX=${bbox}`;
+}
+// Alle Bild-Adressen für eine Kachel (unten → oben). An der Landesgrenze zwei durchsichtige Bilder übereinander.
+function tileUrls(def, z, x, y) {
+  if (def.xyz) return [def.xyz.replace('{z}', z).replace('{x}', x).replace('{y}', y)];
+  const parts = def.sources.map(s => [s, regionState(s.region, z, x, y)]).filter(p => p[1]);
+  const png = def.png || parts.length > 1;
+  return parts.map(([s]) => wmsUrl(s, z, x, y, png));
+}
+// Info-Ebene der LGB zum Luftbild 1953 (Abdeckungsübersicht)
+const YEARS_DEF = { sources: [{ region: 'bb', url: 'https://isk.geobasis-bb.de/mapproxy/dop100g_1953/service/wms', layers: 'bb_dop100g-53_info' }], png: true, maxNative: 14, attr: '' };
+const YEARS_LEGEND = `${YEARS_DEF.sources[0].url}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&FORMAT=image%2Fpng&LAYER=${YEARS_DEF.sources[0].layers}&SLD_VERSION=1.1.0`;
 
-const DefTileLayer = L.TileLayer.extend({
-  initialize(def) {
-    this.def = def;
-    L.TileLayer.prototype.initialize.call(this, '', {
-      maxNativeZoom: def.maxNative, maxZoom: 21, attribution: def.attr,
-      bounds: def.bb ? BB_BOUNDS : undefined, keepBuffer: 3
-    });
-  },
-  getTileUrl(c) { return tileUrl(this.def, c.z, c.x, c.y); }
-});
-/* Offline-Kacheln: im Web im Browser-Cache (Service Worker liefert aus),
-   in der iPhone-App als Dateien im App-Ordner (ohne iCloud-Backup). */
+/* ---------- Offline-Speicher für Kacheln ----------
+   Web: Browser-Cache (der Service Worker liefert aus). App: Dateien im App-Ordner (ohne iCloud-Backup). */
 function h64(s) {
   let a = 0x811c9dc5, b = 0x9e3779b9;
   for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); a = Math.imul(a ^ c, 16777619); b = Math.imul(b ^ c, 2246822507) ^ (b >>> 13); }
   return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
 }
-const tileRel = url => { const h = h64(url); return `${h.slice(0, 2)}/${h}${/image%2Fpng/.test(url) ? '.png' : '.jpg'}`; };
+const tileRel = url => { const h = h64(url); return `${h.slice(0, 2)}/${h}${/image%2Fpng|\.png$/.test(url) ? '.png' : '.jpg'}`; };
+const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg || 'Zeitüberschreitung')), ms))]);
+function looksLikeImage(bytes) { // JPEG FF D8 · PNG 89 50 4E 47
+  return (bytes[0] === 0xFF && bytes[1] === 0xD8) || (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47);
+}
 const TileStore = NATIVE ? {
   ok: true, base: null, dir: 'LIBRARY_NO_CLOUD',
   async init() {
@@ -112,8 +172,20 @@ const TileStore = NATIVE ? {
     }
   },
   localSrc(url) { return this.base && window.Capacitor.convertFileSrc ? window.Capacitor.convertFileSrc(this.base + '/' + tileRel(url)) : null; },
-  async has(url) { try { await callNative('Filesystem', 'stat', { path: 'kacheln/' + tileRel(url), directory: this.dir }); return true; } catch { return false; } },
-  async download(url) { await callNative('Filesystem', 'downloadFile', { url, path: 'kacheln/' + tileRel(url), directory: this.dir, recursive: true }); return 0; },
+  async has(url) { try { const s = await callNative('Filesystem', 'stat', { path: 'kacheln/' + tileRel(url), directory: this.dir }); return !s || s.size === undefined || +s.size > 0; } catch { return false; } },
+  async download(url) {
+    const path = 'kacheln/' + tileRel(url), directory = this.dir;
+    await withTimeout(callNative('Filesystem', 'downloadFile', { url, path, directory, recursive: true }), 45000, 'Server antwortet nicht');
+    let size = 0;
+    try { size = +(await callNative('Filesystem', 'stat', { path, directory })).size || 0; } catch { throw new Error('Datei wurde nicht gespeichert'); }
+    if (size < 6000) { // kleine Datei: echtes Bild oder Fehlermeldung des Servers?
+      const r = await callNative('Filesystem', 'readFile', { path, directory });
+      const head = atob(String(r.data).replace(/^data:[^,]*,/, '').slice(0, 12)), bytes = [...head].map(c => c.charCodeAt(0));
+      if (!looksLikeImage(bytes)) { await callNative('Filesystem', 'deleteFile', { path, directory }).catch(() => { }); throw new Error('Server lieferte kein Bild'); }
+    }
+    return size;
+  },
+  remove(url) { return callNative('Filesystem', 'deleteFile', { path: 'kacheln/' + tileRel(url), directory: this.dir }).catch(() => { }); },
   clear() { return callNative('Filesystem', 'rmdir', { path: 'kacheln', directory: this.dir, recursive: true }).catch(() => { }); }
 } : {
   ok: 'caches' in window,
@@ -121,28 +193,81 @@ const TileStore = NATIVE ? {
   localSrc() { return null; },
   async has(url) { return !!(await (await caches.open(TILES_CACHE)).match(url)); },
   async download(url) {
-    const r = await fetchTile(url);
-    if (!r.ok && r.type !== 'opaque') throw new Error('HTTP ' + r.status);
-    const n = r.type === 'opaque' ? 0 : (await r.clone().blob()).size;
+    const r = await withTimeout(fetchTile(url), 45000, 'Server antwortet nicht');
+    if (r.type !== 'opaque') {
+      if (!r.ok) throw new Error('Server-Fehler ' + r.status);
+      const b = await r.clone().arrayBuffer();
+      if (!looksLikeImage(new Uint8Array(b, 0, Math.min(8, b.byteLength)))) throw new Error('Server lieferte kein Bild');
+      await (await caches.open(TILES_CACHE)).put(url, r);
+      return b.byteLength;
+    }
     await (await caches.open(TILES_CACHE)).put(url, r);
-    return n;
+    return 0;
   },
+  async remove(url) { await (await caches.open(TILES_CACHE)).delete(url); },
   clear() { return caches.delete(TILES_CACHE); }
 };
 TileStore.ready = Promise.resolve(TileStore.init()).catch(() => { });
 
-if (NATIVE) DefTileLayer.include({
+/* In der App: angesehene Kacheln im Hintergrund mitspeichern (wie der Browser-Cache in der Web-Version) */
+const viewQueue = [], viewSeen = new Set();
+let viewBusy = 0;
+function queueViewSave(urls) {
+  if (!NATIVE || !store.get('saveViewed', true) || !TileStore.base) return;
+  for (const u of urls) if (!viewSeen.has(u) && /isk\.geobasis-bb\.de|geodienste\.sachsen\.de|arcgisonline\.com\/ArcGIS\/rest\/services\/Reference/.test(u)) { viewSeen.add(u); viewQueue.push(u); }
+  if (viewQueue.length > 400) viewQueue.splice(0, viewQueue.length - 400);
+  pumpViewQueue();
+}
+function pumpViewQueue() {
+  while (viewBusy < 2 && viewQueue.length && !(dl && dl.running)) {
+    const u = viewQueue.pop(); viewBusy++;
+    TileStore.has(u).then(h => h ? 0 : TileStore.download(u).then(() => bumpTileCount(1)))
+      .catch(() => { }).finally(() => { viewBusy--; pumpViewQueue(); });
+  }
+}
+function bumpTileCount(n) { store.set('tileCount', Math.max(0, store.get('tileCount', 0) + n)); }
+
+/* ---------- Kachel-Darstellung: Mosaik, offline aus dem Speicher, sonst gröbere Kachel vergrößert ---------- */
+function showImgs(el, urls, f, ox, oy) {
+  el.textContent = '';
+  return Promise.all(urls.map(u => new Promise(res => {
+    const img = document.createElement('img'); img.alt = ''; img.setAttribute('role', 'presentation'); img.decoding = 'async';
+    if (f > 1) Object.assign(img.style, { width: f * 100 + '%', height: f * 100 + '%', left: -ox * 100 + '%', top: -oy * 100 + '%' });
+    const local = TileStore.localSrc(u);
+    let net = !local;
+    img.onload = () => res({ img, u, net });
+    img.onerror = () => { if (!net && f === 1) { net = true; img.src = u; } else { img.remove(); res(null); } };
+    img.src = local || u;
+    el.appendChild(img);
+  }))).then(r => r.filter(Boolean));
+}
+async function loadTileStack(el, def, c, urls) {
+  await TileStore.ready;
+  const ok = await showImgs(el, urls, 1, 0, 0);
+  if (ok.length) { queueViewSave(ok.filter(o => o.net).map(o => o.u)); return true; }
+  // Offline oder Server weg: gröbere Kachel aus dem Speicher vergrößert anzeigen
+  for (let d = 1; d <= 7 && c.z - d >= 6; d++) {
+    const z = c.z - d, x = c.x >> d, y = c.y >> d, pu = tileUrls(def, z, x, y);
+    if (!pu.length) break;
+    if ((await showImgs(el, pu, 2 ** d, c.x - (x << d), c.y - (y << d))).length) return true;
+  }
+  return false;
+}
+const DefTileLayer = L.TileLayer.extend({
+  initialize(def, opts) {
+    this.def = def;
+    L.TileLayer.prototype.initialize.call(this, '', Object.assign({
+      maxNativeZoom: def.maxNative, maxZoom: 21, attribution: def.attr || '',
+      bounds: def.sources ? ALL_BOUNDS : undefined, keepBuffer: 3
+    }, opts || {}));
+  },
+  getTileUrl(c) { return tileUrls(this.def, c.z, c.x, c.y)[0] || ''; },
   createTile(coords, done) {
-    const img = document.createElement('img'); img.alt = ''; img.setAttribute('role', 'presentation');
-    const net = this.getTileUrl(coords);
-    TileStore.ready.then(() => { // erst wissen, wo die Offline-Kacheln liegen
-      const local = TileStore.localSrc(net);
-      let usedNet = !local;
-      img.onload = () => done(null, img);
-      img.onerror = e => { if (!usedNet) { usedNet = true; img.src = net; } else done(e, img); };
-      img.src = local || net;
-    });
-    return img;
+    const el = document.createElement('div'); el.className = 'mt';
+    const urls = tileUrls(this.def, coords.z, coords.x, coords.y);
+    if (!urls.length) { setTimeout(() => done(null, el), 0); return el; }
+    loadTileStack(el, this.def, coords, urls).then(ok => done(ok ? null : new Error('Kachel fehlt'), el));
+    return el;
   }
 });
 
@@ -152,11 +277,13 @@ const map = L.map('map', {
   zoomSnap: 0.25, wheelPxPerZoomLevel: 90, tap: false
 }).setView(lastView ? [lastView.lat, lastView.lng] : [52.45, 13.4], lastView ? lastView.z : 8);
 map.attributionControl.setPrefix(false);
+map.attributionControl.getContainer().addEventListener('click', e => { if (e.target.tagName !== 'A') e.currentTarget.classList.toggle('open'); });
 L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
 
 const layerObjs = {};
 let currentLayer = null;
 function setLayer(key) {
+  if (key === 'h53') key = 'hist';
   if (!LAYERS[key]) key = 'dop';
   if (currentLayer) map.removeLayer(currentLayer);
   currentLayer = layerObjs[key] ||= new DefTileLayer(LAYERS[key]);
@@ -166,6 +293,17 @@ function setLayer(key) {
   document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.layer === key));
 }
 setLayer(store.get('layer', 'dop'));
+/* Hybrid: Wege & Orte bleiben beim Kartenwechsel liegen */
+map.createPane('hybrid'); map.getPane('hybrid').style.zIndex = 350; map.getPane('hybrid').style.pointerEvents = 'none';
+const hybridLayers = HYBRID.map(d => new DefTileLayer(d, { pane: 'hybrid', bounds: undefined }));
+function setHybrid(on) {
+  store.set('hybrid', on);
+  hybridLayers.forEach(l => on ? l.addTo(map) : map.removeLayer(l));
+  $('#btnHybrid').classList.toggle('on', on);
+  $('#btnHybrid').setAttribute('aria-pressed', on);
+}
+setHybrid(store.get('hybrid', false));
+$('#btnHybrid').addEventListener('click', () => { setHybrid(!store.get('hybrid', false)); toast(store.get('hybrid', false) ? 'Hybrid an: Wege & Orte über der Karte' : 'Hybrid aus', 1600); });
 // Relief verstärken: Kontrast des Geländemodells anheben, damit flache Gräben hervortreten
 function applyRelief() {
   const l = layerObjs.dgm, c = l && l.getContainer && l.getContainer(); if (!c) return;
@@ -703,7 +841,7 @@ $('#btnLayers').addEventListener('click', () => {
   const cur = store.get('layer', 'dop'), relief = store.get('relief', 1);
   const cnt = c => shapes.filter(s => s.color === c).length;
   openSheet('Karte', `
-    <div class="list">${Object.entries(LAYERS).map(([k, d]) => `<label><input type="radio" name="ly" value="${k}" ${k === cur ? 'checked' : ''}><span class="grow">${esc(d.label)}<span class="sub">${d.offline ? 'Offline speicherbar · nur Brandenburg & Berlin' : 'Nur online (wird beim Ansehen zwischengespeichert)'}</span></span></label>`).join('')}</div>
+    <div class="list">${Object.entries(LAYERS).map(([k, d]) => `<label><input type="radio" name="ly" value="${k}" ${k === cur ? 'checked' : ''}><span class="grow">${esc(d.label)}<span class="sub">${esc(d.sub)}${d.offline ? ' · offline speicherbar' : ''}</span></span></label>`).join('')}</div>
     <label class="field"><span>Relief verstärken (Gelände) <b id="rlv">${Math.round(relief * 100)} %</b></span><input class="range" id="lyRelief" type="range" min="1" max="3" step="0.1" value="${relief}"></label>
     <p class="hint">Hebt flache Gräben, Trichter und Wälle im Geländemodell hervor.</p>
     <div class="sec">Gräben & Stellungen</div>
@@ -716,7 +854,7 @@ $('#btnLayers').addEventListener('click', () => {
     <div class="sec">Zusatzinfo</div>
     <div class="list"><label><input type="checkbox" id="lyYears" ${store.get('years', false) ? 'checked' : ''}><span class="grow">Abdeckung Luftbild 1953<span class="sub">Übersicht der LGB, wo Bilder vom Sommer 1953 vorliegen (ca. 90 % von Brandenburg)</span></span></label></div>
     <div id="lyLegend" ${store.get('years', false) ? '' : 'hidden'} style="margin-top:10px;background:#fff;border-radius:12px;padding:10px"><img src="${YEARS_LEGEND}" alt="Legende" style="max-width:100%;display:block" onerror="this.parentNode.innerHTML='<span style=&quot;color:#333;font-size:13px&quot;>Legende nur online verfügbar</span>'"></div>
-    <p class="hint">Schnell wechseln: oben auf „Luftbild“, „1953“ oder „Gelände“ tippen.</p>`,
+    <p class="hint">Schnell wechseln: oben auf „Luftbild“, „Historisch“ oder „Gelände“ tippen. „Hybrid“ oben links legt Wege und Orte über jede Karte.</p>`,
     body => {
       $('#lyDraw', body).onclick = enterDraw;
       $('#lyRelief', body).addEventListener('input', e => {
@@ -755,10 +893,15 @@ async function openMenu() {
     </div>
     <div class="sec">Offline-Karten</div>
     <div class="list">
-      <button id="mDlView">${ICON.down}<span class="grow">Sichtbaren Ausschnitt speichern<span class="sub">Luftbild, 1953 und Gelände bis zur vollen Schärfe</span></span></button>
-      <button id="mDlBB">${ICON.map}<span class="grow">Ganz Brandenburg & Berlin<span class="sub">Übersicht für das ganze Land</span></span></button>
-      <div><span class="grow">Speicher belegt<span class="sub" id="mStore">wird berechnet …</span></span></div>
-      <button id="mClear">${ICON.trash}<span class="grow" style="color:#ff6b6b">Offline-Karten löschen</span></button>
+      <button id="mDlView">${ICON.down}<span class="grow">Sichtbaren Ausschnitt speichern<span class="sub">Luftbild, Historisch und Gelände bis zur vollen Schärfe</span></span></button>
+      <button id="mDlBB">${ICON.map}<span class="grow">Ganz Brandenburg & Berlin<span class="sub">Übersicht fürs ganze Land</span></span></button>
+      <button id="mDlSN">${ICON.map}<span class="grow">Ganz Sachsen<span class="sub">Übersicht fürs ganze Land</span></span></button>
+    </div>
+    ${getAreas().length ? `<div class="sec">Gespeicherte Gebiete</div><div class="list" id="mAreas">${getAreas().map(a => `<button data-area="${a.id}">${ICON.map}<span class="grow">${esc(a.name)}<span class="sub">bis Zoom ${a.zmax} · ${a.keys.map(k => DL_KEYS[k]).join(', ')} · ${a.status === 'fertig' ? '<span style="color:var(--leaf)">✓ vollständig</span>' : `<span style="color:#ff9f6b">${a.status === 'unvollständig' ? fmtN(a.failed || 0) + ' fehlen' : 'unterbrochen'}</span>`}</span></span></button>`).join('')}</div>` : ''}
+    <div class="list" style="margin-top:10px">
+      ${NATIVE ? `<label><input type="checkbox" id="mSaveViewed" ${store.get('saveViewed', true) ? 'checked' : ''}><span class="grow">Angesehene Karten automatisch speichern<span class="sub">Was du online anschaust, ist danach auch offline da</span></span></label>` : ''}
+      <div><span class="grow">Speicher<span class="sub" id="mStore">wird berechnet …</span></span></div>
+      <button id="mClear">${ICON.trash}<span class="grow" style="color:#ff6b6b">Alle Offline-Karten löschen</span></button>
     </div>
     <div class="sec">Meine Daten</div>
     <div class="list">
@@ -768,14 +911,21 @@ async function openMenu() {
       <button id="mShapesIn">${ICON.up}<span class="grow">Zeichnungen importieren (GeoJSON)<span class="sub">z. B. in QGIS nachgezeichnete Gräben</span></span></button>
     </div>
     <div class="sec">Info</div>
-    <div class="list"><div>${ICON.info}<span class="grow">${entries.length} Blumen gespeichert<span class="sub">Kartendaten: © GeoBasis-DE/LGB (dl-de/by-2-0), Esri, OpenStreetMap-Mitwirkende</span></span></div></div>`,
+    <div class="list"><div>${ICON.info}<span class="grow">${entries.length} Blumen gespeichert<span class="sub">Kartendaten: © GeoBasis-DE/LGB (dl-de/by-2-0), © GeoSN (dl-de/by-2-0; 1965: CC BY-NC-SA 2.0, USGS), Esri, OpenStreetMap-Mitwirkende</span></span></div></div>`,
     body => {
       storageInfo().then(t => { const el = $('#mStore', body); if (el) el.textContent = t; });
       $('#mDlView', body).onclick = () => openDownload('view');
       $('#mDlBB', body).onclick = () => openDownload('bb');
-      $('#mClear', body).onclick = async () => {
-        if (!confirm('Alle gespeicherten Kartenkacheln löschen? Deine Fotos bleiben erhalten.')) return;
-        await TileStore.clear(); toast('Offline-Karten gelöscht'); openMenu();
+      $('#mDlSN', body).onclick = () => openDownload('sn');
+      $('#mAreas', body)?.addEventListener('click', e => { const b = e.target.closest('[data-area]'); if (b) openArea(getAreas().find(a => a.id === b.dataset.area)); });
+      const sv = $('#mSaveViewed', body); if (sv) sv.onchange = e => store.set('saveViewed', e.target.checked);
+      let clearArmed = false;
+      $('#mClear', body).onclick = async e => {
+        const btn = e.currentTarget;
+        if (!clearArmed) { clearArmed = true; $('.grow', btn).textContent = 'Wirklich alle löschen? Nochmal tippen (Fotos bleiben)'; return; }
+        if (dl) dl.stop = true;
+        await TileStore.clear(); store.set('areas', []); store.set('dlJob', null); store.set('tileCount', 0);
+        toast('Offline-Karten gelöscht'); updateChip(); openMenu();
       };
       $('#mImgs', body).onclick = () => { $('#inGallery').value = ''; $('#inGallery').click(); };
       $('#mExport', body).onclick = exportBackup;
@@ -804,20 +954,22 @@ async function storageInfo() {
   try {
     const e = await navigator.storage.estimate();
     const persisted = await navigator.storage.persisted?.();
-    return `${fmtBytes(e.usage || 0)} von ca. ${fmtBytes(e.quota || 0)} verfügbar${persisted ? ' · dauerhaft' : ''}`;
+    const tiles = store.get('tileCount', 0);
+    if (NATIVE) return `ca. ${fmtN(tiles)} Kartenkacheln offline · Fotos & Daten ${fmtBytes(e.usage || 0)}`;
+    return `${fmtBytes(e.usage || 0)} von ca. ${fmtBytes(e.quota || 0)} belegt${persisted ? ' · dauerhaft' : ''}`;
   } catch { return 'unbekannt'; }
 }
 let persistAsked = false;
 async function askPersist() { if (persistAsked) return; persistAsked = true; try { await navigator.storage?.persist?.(); } catch { } }
 
 /* ============================================================
-   Offline-Karten herunterladen
+   Offline-Karten: Gebiete laden, Fortschritt, Fehler, fortsetzen
    ============================================================ */
 const lon2x = (lon, n) => Math.floor((lon + 180) / 360 * n);
 const lat2y = (lat, n) => { const r = lat * Math.PI / 180; return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n); };
-function clipBB(b) {
-  const s = Math.max(b.getSouth(), BB_BOUNDS.getSouth()), n = Math.min(b.getNorth(), BB_BOUNDS.getNorth());
-  const w = Math.max(b.getWest(), BB_BOUNDS.getWest()), e = Math.min(b.getEast(), BB_BOUNDS.getEast());
+function clipAll(b) {
+  const s = Math.max(b.getSouth(), ALL_BOUNDS.getSouth()), n = Math.min(b.getNorth(), ALL_BOUNDS.getNorth());
+  const w = Math.max(b.getWest(), ALL_BOUNDS.getWest()), e = Math.min(b.getEast(), ALL_BOUNDS.getEast());
   return s < n && w < e ? L.latLngBounds([s, w], [n, e]) : null;
 }
 function tileRange(b, z) {
@@ -825,21 +977,39 @@ function tileRange(b, z) {
   const x0 = lon2x(b.getWest(), n), x1 = lon2x(b.getEast(), n), y0 = lat2y(b.getNorth(), n), y1 = lat2y(b.getSouth(), n);
   return { z, x0, x1, y0, y1, count: (x1 - x0 + 1) * (y1 - y0 + 1) };
 }
+const DL_KEYS = { dop: 'Luftbild', hist: 'Historisch', dgm: 'Gelände', hybrid: 'Wege & Orte' };
+const keyDefs = k => k === 'hybrid' ? HYBRID : [LAYERS[k]];
+function countUrls(def, r) { // bei riesigen Bereichen nur stichprobenartig zählen
+  if (def.xyz) return r.count;
+  const step = r.count > 120000 ? Math.ceil(Math.sqrt(r.count / 60000)) : 1;
+  let n = 0;
+  for (let x = r.x0; x <= r.x1; x += step) for (let y = r.y0; y <= r.y1; y += step) n += tileUrls(def, r.z, x, y).length;
+  return Math.round(n * step * step);
+}
+const planMemo = new Map();
 function planDownload(bounds, zmax, keys) {
-  const b = clipBB(bounds); if (!b) return { jobs: [], count: 0, bytes: 0 };
+  const b = clipAll(bounds); if (!b) return { jobs: [], count: 0, bytes: 0 };
+  const mk = b.toBBoxString() + '|' + zmax + '|' + keys.join(',');
+  if (planMemo.has(mk)) return planMemo.get(mk);
+  const res = planDownloadRaw(b, zmax, keys);
+  if (planMemo.size > 50) planMemo.clear();
+  planMemo.set(mk, res);
+  return res;
+}
+function planDownloadRaw(b, zmax, keys) {
   const jobs = []; let count = 0, bytes = 0;
-  for (const k of keys) {
-    const d = LAYERS[k];
+  for (const k of keys) for (const d of keyDefs(k)) {
     for (let z = 7; z <= Math.min(zmax, d.maxNative); z++) {
-      const r = tileRange(b, z); jobs.push({ def: d, ...r }); count += r.count; bytes += r.count * d.kb * 1024;
+      const r = tileRange(b, z), c = countUrls(d, r);
+      if (!c) continue;
+      jobs.push({ def: d, ...r }); count += c; bytes += c * d.kb * 1024;
     }
   }
   return { jobs, count, bytes };
 }
-function* tileIter(jobs) { for (const j of jobs) for (let x = j.x0; x <= j.x1; x++) for (let y = j.y0; y <= j.y1; y++) yield tileUrl(j.def, j.z, x, y); }
+function* tileIter(jobs) { for (const j of jobs) for (let x = j.x0; x <= j.x1; x++) for (let y = j.y0; y <= j.y1; y++) yield* tileUrls(j.def, j.z, x, y); }
 
-
-const corsMode = {}; // pro Host merken, ob CORS klappt
+const corsMode = {}; // pro Server merken, ob CORS klappt
 async function fetchTile(url) {
   const host = new URL(url).host;
   if (corsMode[host] !== false) {
@@ -849,95 +1019,205 @@ async function fetchTile(url) {
   return fetch(url, { mode: 'no-cors', credentials: 'omit' });
 }
 
+/* ---------- gespeicherte Gebiete ---------- */
+const getAreas = () => store.get('areas', []);
+function putArea(a) { const list = getAreas().filter(x => x.id !== a.id); list.unshift(a); store.set('areas', list.slice(0, 40)); }
+const areaBounds = a => L.latLngBounds(a.bounds);
+const fmtN = n => Math.round(n).toLocaleString('de-DE');
+const ZDESC = z => z >= 18 ? 'volle Luftbildschärfe, einzelne Büsche erkennbar' : z >= 17 ? 'sehr scharf, volle DGM-Auflösung' : z >= 15 ? 'Wege, Felder, Hecken gut erkennbar' : z >= 13 ? 'Orte, Wälder, Seen' : 'grobe Übersicht';
+
 let dl = null; // laufender Download
 function openDownload(mode) {
-  if (!TileStore.ok) return toast('Offline-Speicher wird nicht unterstützt');
-  const bounds = mode === 'bb' ? BB_BOUNDS : map.getBounds();
-  const inBB = clipBB(bounds);
-  if (!inBB) return toast('Der Ausschnitt liegt außerhalb von Brandenburg/Berlin');
-  const defZ = mode === 'bb' ? 13 : 18;
-  const minZ = mode === 'bb' ? 9 : Math.max(10, Math.ceil(map.getZoom()));
-  const maxZ = mode === 'bb' ? 16 : 18;
-  const sel = { dop: true, h53: true, dgm: true };
-  openSheet(mode === 'bb' ? 'Ganz Brandenburg' : 'Ausschnitt speichern', `
+  if (!TileStore.ok) return toast('Offline-Speicher wird auf diesem Gerät nicht unterstützt');
+  if (dl) return openDlStatus();
+  const whole = mode === 'bb' || mode === 'sn';
+  const bounds = whole ? REGIONS[mode].bounds : map.getBounds();
+  if (!clipAll(bounds)) return toast('Der Ausschnitt liegt außerhalb von Brandenburg, Berlin und Sachsen');
+  const minZ = whole ? 9 : Math.max(10, Math.min(18, Math.ceil(map.getZoom())));
+  const maxZ = whole ? 16 : 18, defZ = whole ? 13 : 18;
+  const sel = { dop: true, hist: true, dgm: true, hybrid: store.get('hybrid', false) };
+  const c = bounds.getCenter();
+  const name = mode === 'bb' ? 'Ganz Brandenburg & Berlin' : mode === 'sn' ? 'Ganz Sachsen' : `Ausschnitt bei ${c.lat.toFixed(3).replace('.', ',')}° N, ${c.lng.toFixed(3).replace('.', ',')}° O`;
+  openSheet(whole ? name : 'Ausschnitt speichern', `
     <div class="list">
-      <label><input type="checkbox" data-k="dop" checked><span class="grow">Luftbild aktuell</span></label>
-      <label><input type="checkbox" data-k="h53" checked><span class="grow">Luftbild 1953<span class="sub">volle Schärfe schon bei Zoom 16</span></span></label>
-      <label><input type="checkbox" data-k="dgm" checked><span class="grow">Gelände (DGM)</span></label>
+      ${Object.entries(DL_KEYS).map(([k, l]) => `<label><input type="checkbox" data-k="${k}" ${sel[k] ? 'checked' : ''}><span class="grow">${l}${k === 'hist' ? '<span class="sub">volle Schärfe schon bei Zoom 16</span>' : k === 'hybrid' ? '<span class="sub">für den Hybrid-Knopf</span>' : ''}</span></label>`).join('')}
     </div>
     <label class="field"><span>Detailstufe bis Zoom <b id="zv"></b></span><input class="range" id="zr" type="range" min="${minZ}" max="${maxZ}" step="1" value="${Math.min(maxZ, Math.max(minZ, defZ))}"></label>
     <div class="est"><span id="estN"></span><span id="estB"></span></div>
     <p class="hint" id="zHint"></p>
-    <div class="prog" id="pBar" hidden><i></i></div>
-    <div class="est" id="pTxt" hidden></div>
     <div class="row"><button class="btn primary" id="dlGo">${ICON.down}Herunterladen</button></div>
-    <p class="hint">Bereits gespeicherte Kacheln werden übersprungen – ein abgebrochener Download kann einfach neu gestartet werden. Lass die App dabei geöffnet und das iPhone entsperrt, am besten im WLAN.</p>`,
+    <p class="hint">Der Download läuft weiter, wenn du dieses Fenster schließt – unten auf der Karte siehst du den Fortschritt. Lass die App offen und das ${NATIVE ? 'iPhone' : 'Gerät'} entsperrt, am besten im WLAN. Schon gespeicherte Kacheln werden übersprungen.</p>`,
     body => {
       const zr = $('#zr', body);
-      const desc = z => z >= 18 ? 'volle Luftbildschärfe (einzelne Pflanzen erkennbar)' : z >= 17 ? 'sehr scharf, volle DGM-Auflösung' : z >= 15 ? 'Wege, Felder, Hecken gut erkennbar' : z >= 13 ? 'Orte, Wälder, Seen' : 'grobe Übersicht';
       const upd = () => {
         const keys = Object.keys(sel).filter(k => sel[k]);
         const p = planDownload(bounds, +zr.value, keys);
-        $('#zv', body).textContent = zr.value; $('#zHint', body).textContent = 'Zoom ' + zr.value + ': ' + desc(+zr.value);
-        $('#estN', body).textContent = p.count.toLocaleString('de-DE') + ' Kacheln';
+        $('#zv', body).textContent = zr.value; $('#zHint', body).textContent = 'Zoom ' + zr.value + ': ' + ZDESC(+zr.value);
+        $('#estN', body).textContent = fmtN(p.count) + ' Kacheln';
         $('#estB', body).textContent = 'ca. ' + fmtBytes(p.bytes);
-        $('#dlGo', body).disabled = !p.count || !!dl;
-        return p;
+        $('#dlGo', body).disabled = !p.count;
+        return { p, keys };
       };
-      body.querySelectorAll('input[type=checkbox]').forEach(c => c.onchange = () => { sel[c.dataset.k] = c.checked; upd(); });
-      zr.oninput = upd; upd();
-      const bar = $('#pBar', body), ptxt = $('#pTxt', body), go = $('#dlGo', body);
-      const showProg = () => {
-        if (!dl) return;
-        bar.hidden = ptxt.hidden = false;
-        $('i', bar).style.width = (dl.done / dl.total * 100).toFixed(1) + '%';
-        ptxt.innerHTML = `<span>${dl.done.toLocaleString('de-DE')} / ${dl.total.toLocaleString('de-DE')}</span><span>${fmtBytes(dl.bytes)}${dl.failed ? ` · ${dl.failed} Fehler` : ''}</span>`;
+      let deb;
+      const later = () => { $('#zv', body).textContent = zr.value; $('#zHint', body).textContent = 'Zoom ' + zr.value + ': ' + ZDESC(+zr.value); clearTimeout(deb); deb = setTimeout(upd, 140); };
+      body.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = () => { sel[cb.dataset.k] = cb.checked; later(); });
+      zr.oninput = later; upd();
+      let armed = false;
+      $('#dlGo', body).onclick = () => {
+        const { p, keys } = upd();
+        if (p.count > 300000 && !armed) { armed = true; $('#dlGo', body).innerHTML = `Wirklich? ${fmtN(p.count)} Kacheln (≈ ${fmtBytes(p.bytes)}) – nochmal tippen`; return; }
+        const b = clipAll(bounds);
+        closeSheet();
+        startDownload({ id: uid(), name, bounds: [[b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]], zmax: +zr.value, keys, created: Date.now() });
       };
-      go.onclick = async () => {
-        if (dl) return;
-        const p = upd();
-        if (p.count > 400000 && !confirm(`Das sind ${p.count.toLocaleString('de-DE')} Kacheln (≈ ${fmtBytes(p.bytes)}). Das dauert sehr lange. Trotzdem starten?`)) return;
-        askPersist();
-        go.textContent = 'Abbrechen'; go.disabled = false; go.classList.remove('primary');
-        go.onclick = () => { if (dl) dl.stop = true; };
-        await runDownload(p, showProg);
-        if (document.body.contains(go) && document.body.classList.contains('sheet-open')) openDownload(mode);
-      };
-      const iv = setInterval(showProg, 400); showProg();
-      return () => clearInterval(iv);
     });
 }
-async function runDownload(plan, onProg) {
-  dl = { total: plan.count, done: 0, failed: 0, bytes: 0, stop: false };
+async function startDownload(area) {
+  if (dl) return openDlStatus();
+  askPersist();
+  const plan = planDownload(areaBounds(area), area.zmax, area.keys);
+  if (!plan.count) return toast('Nichts zu laden');
+  putArea({ ...area, status: 'läuft', total: plan.count });
+  store.set('dlJob', area.id);
+  await runDownload(plan, area);
+}
+async function runDownload(plan, area) {
+  dl = { area, total: plan.count, done: 0, failed: 0, saved: 0, bytes: 0, stop: false, running: true, errors: {}, t0: Date.now() };
+  updateChip();
+  const iv = setInterval(updateChip, 400);
   let lock = null;
-  try { lock = await navigator.wakeLock?.request('screen'); } catch { }
+  const getLock = async () => { try { lock = await navigator.wakeLock?.request('screen'); } catch { } };
+  await getLock();
+  const onVis = () => { if (document.visibilityState === 'visible' && dl) getLock(); };
+  document.addEventListener('visibilitychange', onVis);
   const it = tileIter(plan.jobs);
   const worker = async () => {
     for (let n = it.next(); !n.done && !dl.stop; n = it.next()) {
       const url = n.value;
       try {
         if (!(await TileStore.has(url))) {
-          let ok = false;
-          for (let a = 0; a < 3 && !ok; a++) {
-            try { dl.bytes += await TileStore.download(url); ok = true; }
-            catch (e) { if (e && e.name === 'QuotaExceededError') throw e; await new Promise(s => setTimeout(s, 800 * (a + 1))); }
+          let err = null;
+          for (let a = 0; a < 3 && !dl.stop; a++) {
+            try { dl.bytes += await TileStore.download(url); dl.saved++; err = null; break; }
+            catch (e) { err = e; if (e && e.name === 'QuotaExceededError') throw e; await new Promise(s => setTimeout(s, 700 * (a + 1))); }
           }
-          if (!ok) throw new Error('fail');
+          if (err) throw err;
         }
       } catch (e) {
         dl.failed++;
-        if (e && e.name === 'QuotaExceededError') { dl.stop = true; dl.quota = true; }
+        const msg = (e && e.name === 'QuotaExceededError') ? 'Speicher voll' : String(e && e.message || e || 'unbekannt').slice(0, 80);
+        dl.errors[msg] = (dl.errors[msg] || 0) + 1;
+        if (msg === 'Speicher voll') { dl.stop = true; dl.reason = 'Der Speicher für die App ist voll.'; }
+        if (dl.failed >= 40 && dl.saved === 0 && !dl.reason) { dl.stop = true; dl.reason = 'Die Kartenserver sind gerade nicht erreichbar. Internet prüfen und später fortsetzen.'; }
       }
       dl.done++;
     }
   };
-  await Promise.all(Array.from({ length: 6 }, worker));
-  const res = dl; dl = null;
+  await Promise.all(Array.from({ length: NATIVE ? 4 : 6 }, worker));
+  clearInterval(iv);
+  document.removeEventListener('visibilitychange', onVis);
   try { await lock?.release(); } catch { }
-  onProg?.();
-  toast(res.quota ? 'Speicher für die App ist voll – kleineren Bereich oder geringere Detailstufe wählen' : res.stop ? 'Download abgebrochen' : `Fertig: ${res.done.toLocaleString('de-DE')} Kacheln${res.failed ? `, ${res.failed} fehlgeschlagen` : ''}`, 4000);
+  const res = dl; res.running = false;
+  const status = res.stop ? (res.reason ? 'unvollständig' : 'unterbrochen') : res.failed ? 'unvollständig' : 'fertig';
+  putArea({ ...area, status, total: res.total, ok: res.done - res.failed, failed: res.failed, errors: res.errors, finished: Date.now() });
+  if (status === 'fertig' || status === 'unvollständig') store.set('dlJob', null);
+  bumpTileCount(res.saved);
+  dl = null; lastResult = res;
+  updateChip(res);
+  pumpViewQueue();
 }
 
+/* ---------- Fortschritts-Chip auf der Karte ---------- */
+let lastResult = null, chipT;
+function updateChip(res) {
+  const c = $('#dlChip'), txt = $('#dlChipTxt'), ring = $('#dlChip .ring');
+  clearTimeout(chipT);
+  if (dl) {
+    const pct = dl.total ? dl.done / dl.total : 0;
+    c.hidden = false; c.className = 'glass run';
+    ring.style.setProperty('--p', (pct * 360).toFixed(0) + 'deg');
+    txt.textContent = `${dl.stop ? 'Stoppe …' : 'Karten laden'} · ${Math.floor(pct * 100)} %${dl.failed ? ` · ${fmtN(dl.failed)} Fehler` : ''}`;
+    return;
+  }
+  if (res) {
+    c.hidden = false;
+    const bad = res.stop || res.failed;
+    c.className = 'glass ' + (bad ? 'warn' : 'ok');
+    ring.style.setProperty('--p', '360deg');
+    txt.textContent = res.reason ? 'Download gestoppt – Details' : res.stop ? 'Download abgebrochen' : res.failed ? `${fmtN(res.failed)} Kacheln fehlen – Details` : `✓ Offline gespeichert (${fmtN(res.total)} Kacheln)`;
+    chipT = setTimeout(() => { c.hidden = true; }, bad ? 12000 : 5000);
+    return;
+  }
+  // nichts läuft: unterbrochenen Download nach Neustart anbieten
+  const jobId = store.get('dlJob', null), job = jobId && getAreas().find(a => a.id === jobId);
+  if (job) { c.hidden = false; c.className = 'glass warn'; ring.style.setProperty('--p', '0deg'); txt.textContent = 'Download unterbrochen – fortsetzen?'; }
+  else c.hidden = true;
+}
+$('#dlChip').addEventListener('click', () => {
+  if (dl) return openDlStatus();
+  if (lastResult) return openDlStatus(lastResult);
+  const jobId = store.get('dlJob', null), job = getAreas().find(a => a.id === jobId);
+  if (job) startDownload(job);
+});
+function errList(errors) {
+  const e = Object.entries(errors || {}).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  return e.length ? `<div class="list" style="margin-top:10px">${e.map(([m, n]) => `<div><span class="grow">${esc(m)}<span class="sub">${fmtN(n)}×</span></span></div>`).join('')}</div>` : '';
+}
+function openDlStatus(res) {
+  const r = dl || res; if (!r) return;
+  const running = !!dl;
+  openSheet(running ? 'Karten werden geladen' : 'Download-Ergebnis', `
+    <p class="hint" style="font-size:15px;color:var(--ink-2)">${esc(r.area.name)}<br>bis Zoom ${r.area.zmax} · ${r.area.keys.map(k => DL_KEYS[k]).join(', ')}</p>
+    <div class="prog"><i id="stBar" style="width:${(r.done / r.total * 100).toFixed(1)}%"></i></div>
+    <div class="est"><span id="stN">${fmtN(r.done)} / ${fmtN(r.total)}</span><span id="stF">${r.failed ? fmtN(r.failed) + ' fehlgeschlagen' : 'keine Fehler'}</span></div>
+    ${r.reason ? `<p class="hint" style="color:#ff9f6b">${esc(r.reason)}</p>` : ''}
+    ${r.failed ? '<div class="sec">Gründe</div>' + errList(r.errors) : ''}
+    <div class="row">${running ? '<button class="btn danger" id="stStop">Abbrechen</button>' : `${r.failed || r.stop ? '<button class="btn primary" id="stAgain">Fehlende nachladen</button>' : ''}<button class="btn" id="stShow">Auf Karte zeigen</button>`}</div>`,
+    body => {
+      const iv = setInterval(() => {
+        if (!dl) return;
+        $('#stBar', body).style.width = (dl.done / dl.total * 100).toFixed(1) + '%';
+        $('#stN', body).textContent = `${fmtN(dl.done)} / ${fmtN(dl.total)}`;
+        $('#stF', body).textContent = dl.failed ? fmtN(dl.failed) + ' fehlgeschlagen' : 'keine Fehler';
+      }, 400);
+      const st = $('#stStop', body); if (st) st.onclick = () => { if (dl) dl.stop = true; closeSheet(); };
+      const ag = $('#stAgain', body); if (ag) ag.onclick = () => { closeSheet(); startDownload(r.area); };
+      const sh = $('#stShow', body); if (sh) sh.onclick = () => { closeSheet(); showArea(r.area); };
+      return () => clearInterval(iv);
+    });
+}
+function showArea(a) {
+  const b = areaBounds(a);
+  map.flyToBounds(b, { padding: [30, 30], duration: .6 });
+  const rect = L.rectangle(b, { color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#8f5cff', weight: 2, dashArray: '6 6', fill: false, interactive: false }).addTo(map);
+  setTimeout(() => map.removeLayer(rect), 5000);
+}
+function openArea(a) {
+  const st = { fertig: '✓ vollständig', 'unvollständig': `${fmtN(a.failed || 0)} Kacheln fehlen`, unterbrochen: 'unterbrochen', 'läuft': 'unterbrochen' }[a.status] || a.status;
+  openSheet('Offline-Gebiet', `
+    <p class="hint" style="font-size:15px;color:var(--ink-2)">${esc(a.name)}<br>bis Zoom ${a.zmax} · ${a.keys.map(k => DL_KEYS[k]).join(', ')}<br>${fmtN(a.total || 0)} Kacheln · ${st} · ${new Date(a.finished || a.created).toLocaleDateString('de-DE')}</p>
+    ${a.failed ? errList(a.errors) : ''}
+    <div class="row"><button class="btn" id="arShow">${ICON.map}Zeigen</button><button class="btn primary" id="arAgain">${ICON.down}${a.status === 'fertig' ? 'Prüfen' : 'Fortsetzen'}</button></div>
+    <div class="row"><button class="btn danger" id="arDel">${ICON.trash}Gebiet löschen</button></div>
+    <p class="hint" id="arHint"></p>`,
+    body => {
+      $('#arShow', body).onclick = () => { closeSheet(); showArea(a); };
+      $('#arAgain', body).onclick = () => { closeSheet(); startDownload(a); };
+      let armed = false;
+      $('#arDel', body).onclick = async () => {
+        if (!armed) { armed = true; $('#arDel', body).textContent = 'Wirklich löschen? Nochmal tippen'; return; }
+        const plan = planDownload(areaBounds(a), a.zmax, a.keys);
+        const keep = new Set(); // Kacheln, die zu anderen Gebieten gehören, bleiben
+        for (const o of getAreas()) if (o.id !== a.id && areaBounds(o).intersects(areaBounds(a))) { const pl = planDownload(areaBounds(o), o.zmax, o.keys); for (const u of tileIter(pl.jobs)) keep.add(u); }
+        let n = 0; const all = [...tileIter(plan.jobs)].filter(u => !keep.has(u));
+        for (const u of all) { await TileStore.remove(u); if (++n % 200 === 0) $('#arHint', body).textContent = `Lösche … ${fmtN(n)} / ${fmtN(all.length)}`; }
+        store.set('areas', getAreas().filter(x => x.id !== a.id));
+        if (store.get('dlJob', null) === a.id) store.set('dlJob', null);
+        bumpTileCount(-all.length);
+        closeSheet(); toast('Gebiet gelöscht'); updateChip();
+      };
+    });
+}
 /* ============================================================
    Backup (ZIP) & GeoJSON
    ============================================================ */
@@ -1066,6 +1346,7 @@ $('#offlineBadge').textContent = 'Offline – gespeicherte Karten';
 if (!NATIVE && 'serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW', e));
 }
+updateChip();
 loadEntries().then(migrate).catch(e => toast('Datenbank-Fehler: ' + e.message, 5000));
 askPersist();
 // Ältere Einträge (Version 1) einmalig in ein sauberes, aufrecht gedrehtes JPEG umwandeln
@@ -1077,4 +1358,4 @@ async function migrate() {
   }
   if (n) loadEntries();
 }
-window.__bk = { map, entries: () => entries, LAYERS, tileUrl, planDownload, readExif, makeZip, readZip };
+window.__bk = { map, entries: () => entries, LAYERS, tileUrls, regionState, planDownload, readExif, makeZip, readZip };

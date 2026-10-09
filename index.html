@@ -18,7 +18,7 @@
   --ink:#f6f1e7; --ink-2:#c9c1b2; --ink-3:#8f8778;
   --glass:rgba(22,21,17,.72); --glass-strong:rgba(22,21,17,.92);
   --line:rgba(255,248,235,.14);
-  --accent:#d24b86; --accent-ink:#fff;
+  --accent:#8b5cf6; --accent-ink:#fff;
   --leaf:#7fae5a;
   --me:#2f8cff;
   --sheet:#1b1a16; --field:#26241f;
@@ -33,7 +33,9 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;paddin
 input,textarea{font:inherit;color:var(--ink)}
 #map{position:fixed;inset:0;background:#2a2822}
 .leaflet-container{background:#2a2822;font:inherit}
-.leaflet-control-attribution{background:rgba(20,19,15,.55)!important;color:#ddd!important;font-size:9px!important;border-radius:6px 0 0 0}
+[hidden]{display:none!important}
+.leaflet-control-attribution{background:rgba(20,19,15,.55)!important;color:#ddd!important;font-size:9px!important;border-radius:6px 0 0 0;max-width:62vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.leaflet-control-attribution.open{white-space:normal;max-width:calc(100vw - 24px)}
 .leaflet-control-attribution a{color:#eee!important}
 .leaflet-bottom.leaflet-right{margin-bottom:calc(var(--sab) + 92px)}
 .leaflet-bottom.leaflet-left{margin-bottom:calc(var(--sab) + 96px)}
@@ -41,11 +43,15 @@ input,textarea{font:inherit;color:var(--ink)}
 
 /* ---------- glass controls ---------- */
 .glass{background:var(--glass);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);border:1px solid var(--line);box-shadow:0 6px 24px rgba(0,0,0,.35)}
-#topbar{position:fixed;left:0;right:0;top:calc(var(--sat) + 10px);display:flex;justify-content:center;pointer-events:none;z-index:500}
+#topbar{position:fixed;left:12px;right:12px;top:calc(var(--sat) + 10px);display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px;pointer-events:none;z-index:500}
+#topbar .seg{justify-self:center}
+#btnHybrid{pointer-events:auto;height:42px;padding:0 13px;border-radius:14px;font-size:14px;font-weight:700;letter-spacing:.2px;color:var(--ink-2);display:flex;align-items:center;gap:6px;transition:background .2s,color .2s}
+#btnHybrid svg{width:17px;height:17px}
+#btnHybrid.on{background:var(--accent);color:#fff;border-color:transparent}
 .seg{pointer-events:auto;display:flex;padding:3px;border-radius:14px;gap:2px}
-.seg button{padding:8px 14px;border-radius:11px;font-size:15px;font-weight:600;color:var(--ink-2);letter-spacing:.1px;transition:background .2s,color .2s}
+.seg button{padding:9px 11px;border-radius:11px;font-size:14px;font-weight:600;color:var(--ink-2);letter-spacing:.1px;transition:background .2s,color .2s}
 .seg button.on{background:var(--ink);color:#16150f}
-#sidebtns{position:fixed;right:12px;top:calc(var(--sat) + 64px);display:flex;flex-direction:column;border-radius:14px;overflow:hidden;z-index:500}
+#sidebtns{position:fixed;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;border-radius:14px;overflow:hidden;z-index:500}
 #sidebtns button{width:46px;height:46px;display:grid;place-items:center}
 #sidebtns button+button{border-top:1px solid var(--line)}
 #sidebtns svg{width:22px;height:22px}
@@ -62,6 +68,21 @@ input,textarea{font:inherit;color:var(--ink)}
 #btnShoot svg{width:34px;height:34px}
 .badge{position:absolute;transform:translate(16px,-16px);min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--leaf);color:#0f1a08;font-size:12px;font-weight:700;display:grid;place-items:center}
 #btnList{position:relative}
+
+/* ---------- Intro ---------- */
+#intro{position:fixed;inset:0;width:100%;height:100%;z-index:3000;background:#10120d;touch-action:none}
+
+/* ---------- Kacheln & Hybrid ---------- */
+.leaflet-tile.mt{overflow:hidden}
+.mt img{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+.leaflet-hybrid-pane{filter:drop-shadow(0 0 1px rgba(0,0,0,.6))}
+
+/* ---------- Download-Fortschritt ---------- */
+#dlChip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 112px);z-index:520;display:flex;align-items:center;gap:9px;padding:8px 15px 8px 10px;border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis}
+#dlChip .ring{flex:none;width:18px;height:18px;border-radius:50%;background:conic-gradient(var(--accent) var(--p,0deg),rgba(255,255,255,.18) 0);-webkit-mask:radial-gradient(circle 5px,transparent 97%,#000 100%);mask:radial-gradient(circle 5px,transparent 97%,#000 100%)}
+#dlChip.ok .ring{background:var(--leaf)}
+#dlChip.warn .ring{background:#ff9f3b}
+body.drawing #dlChip,body.placing #dlChip{bottom:calc(var(--sab) + 205px)}
 
 /* ---------- map markers ---------- */
 .ph-wrap{background:none;border:0}
@@ -161,12 +182,15 @@ body.sheet-open #sheet{transform:none}
 </style>
 </head>
 <body>
+<canvas id="intro" aria-hidden="true"></canvas>
+<script src="intro.js"></script>
 <div id="map"></div>
 
 <div id="topbar">
+  <button id="btnHybrid" class="glass" aria-pressed="false" aria-label="Hybrid: Wege und Orte einblenden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c3-4 5-5 8-5s5-3 8-11"/><circle cx="8" cy="7" r="2"/></svg>Hybrid</button>
   <div class="seg glass" id="seg">
     <button data-layer="dop" class="on">Luftbild</button>
-    <button data-layer="h53">1953</button>
+    <button data-layer="hist">Historisch</button>
     <button data-layer="dgm">Gelände</button>
   </div>
 </div>
@@ -185,7 +209,7 @@ body.sheet-open #sheet{transform:none}
   <button id="btnMenu" class="round glass" aria-label="Menü" style="position:relative"><span id="menuDot" hidden style="position:absolute;top:2px;right:2px;width:13px;height:13px;border-radius:50%;background:#ff9f3b;border:2px solid #14130f"></span><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
 </div>
 
-<div id="pin"><svg viewBox="0 0 24 24"><path fill="#d24b86" stroke="#fff" stroke-width="1.5" d="M12 22s7-6.4 7-12A7 7 0 0 0 5 10c0 5.6 7 12 7 12Z"/><circle cx="12" cy="10" r="2.6" fill="#fff"/></svg></div>
+<div id="pin"><svg viewBox="0 0 24 24"><path fill="#8b5cf6" stroke="#fff" stroke-width="1.5" d="M12 22s7-6.4 7-12A7 7 0 0 0 5 10c0 5.6 7 12 7 12Z"/><circle cx="12" cy="10" r="2.6" fill="#fff"/></svg></div>
 <div id="pinbar" class="glass">
   <p>Karte verschieben, bis die Nadel auf der Blume steht</p>
   <div class="row" style="margin:0">
@@ -208,6 +232,8 @@ body.sheet-open #sheet{transform:none}
   <div class="row" style="margin:0"><button class="btn" id="drawUndo">Rückgängig</button><button class="btn primary" id="drawDone">Fertig</button></div>
 </div>
 
+<button id="dlChip" class="glass" hidden><i class="ring"></i><span id="dlChipTxt"></span></button>
+
 <div id="backdrop"></div>
 <div id="sheet" role="dialog" aria-modal="true">
   <div class="grab"></div>
@@ -225,6 +251,7 @@ body.sheet-open #sheet{transform:none}
 <datalist id="arten"></datalist>
 
 <script src="vendor/leaflet.js"></script>
+<script src="regions.js"></script>
 <script src="app.js"></script>
 <script src="draw.js"></script>
 </body>
