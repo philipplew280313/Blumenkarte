@@ -1,4 +1,6 @@
-# Blumenkarte – Installation aufs iPhone
+# HeimatScan – Installation aufs iPhone
+
+(früher „Blumenkarte“ – Fotos, Zeichnungen und Offline-Karten bleiben beim Update erhalten)
 
 Die App ist eine Web-App. Sie muss einmal im Internet liegen (kostenlos, HTTPS),
 damit das iPhone Kamera, GPS und Offline-Speicher freigibt. Danach läuft sie vom
@@ -23,7 +25,7 @@ Home-Bildschirm wie eine normale App, auch ohne Netz.
 ## 2. Aufs iPhone holen
 1. Die Adresse in **Safari** öffnen.
 2. Teilen-Knopf → **„Zum Home-Bildschirm“**.
-3. Ab jetzt immer über das Blumen-Icon starten (nicht über Safari) –
+3. Ab jetzt immer über das HeimatScan-Icon starten (nicht über Safari) –
    die App hat ihren eigenen Speicher.
 4. Beim ersten Start Standort („Beim Verwenden der App“) und Kamera erlauben.
 
@@ -147,7 +149,7 @@ aufheben.
 
 ## Echte iPhone-App mit AltStore (kostenlos, Windows-PC)
 Die App wird bei jeder Änderung automatisch von GitHub gebaut. Neueste Version:
-https://github.com/PhilipPlew280313/Blumenkarte/releases/latest/download/Blumenkarte.ipa
+https://github.com/PhilipPlew280313/Blumenkarte/releases/latest/download/HeimatScan.ipa
 
 **Einmalig am Windows-PC**
 1. **iTunes** und **iCloud** direkt von apple.com laden, nicht aus dem
@@ -166,10 +168,10 @@ https://github.com/PhilipPlew280313/Blumenkarte/releases/latest/download/Blumenk
    **Vertrauen**.
 7. Einstellungen → Datenschutz & Sicherheit → **Entwicklermodus** einschalten,
    iPhone startet neu, „Einschalten“ bestätigen.
-8. In Safari den Link oben öffnen → `Blumenkarte.ipa` wird in „Dateien“
+8. In Safari den Link oben öffnen → `HeimatScan.ipa` wird in „Dateien“
    geladen.
 9. **AltStore** öffnen → Reiter **Meine Apps** → **+** oben links →
-   `Blumenkarte.ipa` wählen. Fertig, das Blumen-Icon erscheint.
+   `HeimatScan.ipa` wählen. Fertig, das HeimatScan-Icon erscheint.
 
 **Automatisch erneuern (alle 7 Tage)**
 - AltServer am PC laufen lassen (startet mit Windows, wenn du ihn in den

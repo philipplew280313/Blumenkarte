@@ -1,4 +1,4 @@
-/* Blumenkarte – persönliche Foto-Karte für Blumenfunde in Brandenburg & Berlin */
+/* HeimatScan – persönliche Fund- und Foto-Karte mit Luftbild, Gelände und historischen Karten */
 'use strict';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -831,7 +831,7 @@ function exifSegment(rec) {
     { tag: 1, ...A(rec.lat >= 0 ? 'N' : 'S') }, { tag: 2, ...R(dms(rec.lat)) },
     { tag: 3, ...A(rec.lng >= 0 ? 'E' : 'W') }, { tag: 4, ...R(dms(rec.lng)) }];
   const exif = [{ tag: 0x9003, ...A(dts) }, { tag: 0x9004, ...A(dts) }, { tag: 0x9286, type: 7, count: uc.length, bytes: uc }];
-  const ifd0 = p => [{ tag: 0x010E, ...A(desc) }, { tag: 0x0112, ...S(1) }, { tag: 0x0131, ...A('Blumenkarte') }, { tag: 0x0132, ...A(dts) }, { tag: 0x8769, ...Lp(p.exif) }, { tag: 0x8825, ...Lp(p.gps) }];
+  const ifd0 = p => [{ tag: 0x010E, ...A(desc) }, { tag: 0x0112, ...S(1) }, { tag: 0x0131, ...A('HeimatScan') }, { tag: 0x0132, ...A(dts) }, { tag: 0x8769, ...Lp(p.exif) }, { tag: 0x8825, ...Lp(p.gps) }];
   const len0 = ifdBytes(ifd0({ exif: 0, gps: 0 }), 8).length;
   const exifB = ifdBytes(exif, 8 + len0), gpsB = ifdBytes(gps, 8 + len0 + exifB.length);
   const tiff = cat([new Uint8Array([0x49, 0x49, 42, 0, 8, 0, 0, 0]), ifdBytes(ifd0({ exif: 8 + len0, gps: 8 + len0 + exifB.length }), 8), exifB, gpsB]);
@@ -1099,7 +1099,7 @@ $('#btnMenu').addEventListener('click', openMenu);
 async function openMenu() {
   const todo = entries.filter(e => !e.inPhotos || e.photosStale);
   const lastB = store.get('lastBackup', 0);
-  openSheet('Blumenkarte', `
+  openSheet('HeimatScan', `
     <div class="sec">Datensicherung</div>
     <div class="list">
       <div>${ICON.img}<span class="grow">${!entries.length ? 'Noch keine Fotos' : todo.length ? `<b style="color:#ff9f6b">${todo.length} von ${entries.length}</b> noch nicht in deinen Fotos` : `<span style="color:var(--leaf)">✓ Alle ${entries.length} in deinen Fotos gesichert</span>`}<span class="sub">Gesicherte Bilder tragen Position, Datum, Name und Notiz in sich – über iCloud-Fotos sind sie sicher.</span></span></div>
@@ -1515,10 +1515,10 @@ async function exportBackup() {
     const el = $('#bx'); if (el) el.textContent = `Teil ${i + 1} von ${chunks.length} erstellt …`;
   }
   store.set('lastBackup', Date.now());
-  if (zips.length === 1) return saveFile(zips[0], `blumenkarte-backup-${stamp()}.zip`, 'Dein Backup');
+  if (zips.length === 1) return saveFile(zips[0], `heimatscan-backup-${stamp()}.zip`, 'Dein Backup');
   // mehrere Teile nacheinander sichern
   let i = 0;
-  const next = () => { if (i < zips.length) { saveFile(zips[i], `blumenkarte-backup-${stamp()}-teil${i + 1}.zip`, `Backup Teil ${i + 1} von ${zips.length}`); i++; const b = $('#sv'); const o = b.onclick; b.onclick = async () => { await o(); next(); }; } };
+  const next = () => { if (i < zips.length) { saveFile(zips[i], `heimatscan-backup-${stamp()}-teil${i + 1}.zip`, `Backup Teil ${i + 1} von ${zips.length}`); i++; const b = $('#sv'); const o = b.onclick; b.onclick = async () => { await o(); next(); }; } };
   next();
 }
 $('#inBackup').addEventListener('change', async e => {
@@ -1529,7 +1529,7 @@ $('#inBackup').addEventListener('change', async e => {
     const have = new Set(entries.map(x => x.id));
     for (const f of files) {
       const z = await readZip(f);
-      if (!z['blumen.json'] && !z['zeichnungen.geojson']) throw new Error('Kein Blumenkarte-Backup');
+      if (!z['blumen.json'] && !z['zeichnungen.geojson']) throw new Error('Kein HeimatScan-Backup');
       if (z['zeichnungen.geojson']) drawn += await importShapesGeoJSON(JSON.parse(await z['zeichnungen.geojson'].text()));
       const data = z['blumen.json'] ? JSON.parse(await z['blumen.json'].text()) : { items: [] };
       for (const m of data.items) {

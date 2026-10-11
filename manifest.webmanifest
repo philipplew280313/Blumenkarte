@@ -1,6 +1,6 @@
 {
-  "name": "Blumenkarte",
-  "short_name": "Blumenkarte",
+  "name": "HeimatScan",
+  "short_name": "HeimatScan",
   "description": "Blumenfunde fotografieren und auf der Karte von Brandenburg festhalten",
   "lang": "de",
   "start_url": "./",

@@ -1,6 +1,6 @@
-# Baut die Blumenkarte als iPhone-App (.ipa, unsigniert) auf einem Apple-Rechner von GitHub.
+# Baut HeimatScan als iPhone-App (.ipa, unsigniert) auf einem Apple-Rechner von GitHub.
 # AltStore signiert sie beim Installieren mit deiner Apple-ID.
-# Ergebnis: https://github.com/<du>/<projekt>/releases/latest/download/Blumenkarte.ipa
+# Ergebnis: https://github.com/<du>/<projekt>/releases/latest/download/HeimatScan.ipa
 name: iPhone-App bauen
 
 on:
@@ -63,7 +63,7 @@ jobs:
         working-directory: native/ios/App/App
         run: |
           P=Info.plist
-          plutil -replace CFBundleDisplayName -string "Blumenkarte" $P
+          plutil -replace CFBundleDisplayName -string "HeimatScan" $P
           plutil -replace NSCameraUsageDescription -string "Damit du Blumen fotografieren kannst." $P
           plutil -replace NSLocationWhenInUseUsageDescription -string "Damit deine Position auf der Karte erscheint und Fotos dem Fundort zugeordnet werden." $P
           plutil -replace NSPhotoLibraryUsageDescription -string "Damit du Fotos aus deiner Mediathek hinzufügen kannst." $P
@@ -86,15 +86,15 @@ jobs:
           test -d build/Build/Products/Release-iphoneos/App.app
           mkdir -p Payload
           cp -R build/Build/Products/Release-iphoneos/App.app Payload/
-          zip -qry Blumenkarte.ipa Payload
-          ls -la Blumenkarte.ipa
+          zip -qry HeimatScan.ipa Payload
+          ls -la HeimatScan.ipa
 
       - name: Als Download bereitstellen
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="app-${{ github.run_number }}"
-          gh release create "$TAG" native/ios/App/Blumenkarte.ipa \
-            --title "Blumenkarte App (Bau ${{ github.run_number }})" \
-            --notes "In AltStore installieren: Datei aufs iPhone laden, dann AltStore → Meine Apps → + → Blumenkarte.ipa wählen." \
+          gh release create "$TAG" native/ios/App/HeimatScan.ipa \
+            --title "HeimatScan App (Bau ${{ github.run_number }})" \
+            --notes "In AltStore installieren: Datei aufs iPhone laden, dann AltStore → Meine Apps → + → HeimatScan.ipa wählen." \
             --latest
