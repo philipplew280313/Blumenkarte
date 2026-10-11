@@ -64,16 +64,19 @@ jobs:
         run: |
           P=Info.plist
           plutil -replace CFBundleDisplayName -string "HeimatScan" $P
-          plutil -replace NSCameraUsageDescription -string "Damit du Blumen fotografieren kannst." $P
+          plutil -replace NSCameraUsageDescription -string "Damit du Funde und Gebäude fotografieren kannst." $P
           plutil -replace NSLocationWhenInUseUsageDescription -string "Damit deine Position auf der Karte erscheint und Fotos dem Fundort zugeordnet werden." $P
           plutil -replace NSPhotoLibraryUsageDescription -string "Damit du Fotos aus deiner Mediathek hinzufügen kannst." $P
-          plutil -replace NSPhotoLibraryAddUsageDescription -string "Damit Blumenfotos mit Ort und Notiz in deinen Fotos gesichert werden." $P
+          plutil -replace NSPhotoLibraryAddUsageDescription -string "Damit deine Fundfotos mit Ort und Angaben in deinen Fotos gesichert werden." $P
           plutil -replace UIFileSharingEnabled -bool NO $P
           echo "--- AppIcon"; ls Assets.xcassets/AppIcon.appiconset
           for f in Assets.xcassets/AppIcon.appiconset/*.png; do sips -z 1024 1024 ../../../icon-1024.png --out "$f" >/dev/null; done
           echo "--- Splash"; ls Assets.xcassets/Splash.imageset || true
           for f in Assets.xcassets/Splash.imageset/*.png; do [ -f "$f" ] && cp ../../../splash-2732.png "$f"; done
           plutil -p $P | grep -E "Usage|DisplayName"
+          # „Schütteln zum Widerrufen“ abschalten (sonst fragt iOS beim Schütteln „Eingabe widerrufen?“)
+          perl -0pi -e 's/(didFinishLaunchingWithOptions[^{]*\{)/$1\n        application.applicationSupportsShakeToEdit = false/' AppDelegate.swift
+          grep -n "applicationSupportsShakeToEdit" AppDelegate.swift
 
       - name: App bauen (unsigniert)
         working-directory: native/ios/App

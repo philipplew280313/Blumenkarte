@@ -1,5 +1,5 @@
-/* Intro (1,2 s): Wald-Luftbild → der Detektor schwingt darüber und legt das Geländemodell frei
-   → Zoom durch die Öffnung des „D“ in die App. Alles wird als Skizze gezeichnet (offline, keine Bilder nötig). */
+/* Intro (2 s): Wald-Luftbild → der Detektor schwingt darüber und legt das Geländemodell frei
+   → Zoom durch den Bauch des ersten „a“ von HeimatScan in die App. Alles wird als Skizze gezeichnet (offline, keine Bilder nötig). */
 (() => {
   'use strict';
   const cv = document.getElementById('intro');
@@ -145,53 +145,74 @@
     return c;
   }
 
-  /* ---------- Schriftzug: eigene Buchstaben aus Strichen (keine Kopie eines Markenlogos) ---------- */
-  const S = 22, R = S / 2;
+  /* ---------- Schriftzug „HeimatScan“: feine, lineare Skizzenschrift aus eigenen Strichen ---------- */
+  const LW = 5.5; // Strichstärke in Glyphen-Einheiten (Versalhöhe 100, x-Höhe ab y=38)
   const GLYPH = {
-    D: { w: 80, d(c) { c.moveTo(R, 0); c.lineTo(R, 100); c.moveTo(0, R); c.lineTo(30, R); c.arc(30, 50, 50 - R, -Math.PI / 2, Math.PI / 2); c.lineTo(0, 100 - R); } },
-    E: { w: 62, d(c) { c.moveTo(R, 0); c.lineTo(R, 100); c.moveTo(0, R); c.lineTo(62, R); c.moveTo(R, 50); c.lineTo(54, 50); c.moveTo(0, 100 - R); c.lineTo(62, 100 - R); } },
-    U: { w: 74, d(c) { c.moveTo(R, 0); c.lineTo(R, 63); c.arc(37, 63, 37 - R, Math.PI, 0, true); c.lineTo(74 - R, 0); } },
-    S: { w: 76, d(c) { c.ellipse(38, 30, 27, 19, 0, rad(-25), rad(90), true); c.lineTo(38, 51); c.ellipse(38, 70, 27, 19, 0, rad(-90), rad(155), false); } },
-    I: { w: 22, d(c) { c.moveTo(R, 0); c.lineTo(R, 100); } },
-    X: { w: 72, d(c) { c.moveTo(12, 2); c.lineTo(60, 98); c.moveTo(60, 2); c.lineTo(12, 98); } },
-    P: { w: 70, d(c) { c.moveTo(R, 0); c.lineTo(R, 100); c.moveTo(0, R); c.lineTo(36, R); c.arc(36, 33.5, 22.5, -Math.PI / 2, Math.PI / 2); c.lineTo(R, 56); } }
+    H: { w: 66, d(c) { c.moveTo(0, 0); c.lineTo(0, 100); c.moveTo(66, 0); c.lineTo(66, 100); c.moveTo(0, 51); c.lineTo(66, 51); } },
+    e: { w: 54, d(c) { c.moveTo(1, 69); c.lineTo(54, 69); c.ellipse(27.5, 69, 26.5, 31, 0, 0, rad(42), true); } },
+    i: { w: 6, d(c) { c.moveTo(3, 38); c.lineTo(3, 100); c.moveTo(3 + 0.01, 17); c.lineTo(3, 17); } },
+    m: { w: 82, d(c) { c.moveTo(0, 38); c.lineTo(0, 100); c.moveTo(0, 60); c.arc(20.5, 60, 20.5, Math.PI, 0); c.lineTo(41, 100); c.moveTo(41, 60); c.arc(61.5, 60, 20.5, Math.PI, 0); c.lineTo(82, 100); } },
+    a: { w: 56, d(c) { c.moveTo(56, 38); c.lineTo(56, 100); c.moveTo(54, 69); c.ellipse(27.5, 69, 26.5, 31, 0, 0, TAU); } },
+    t: { w: 32, d(c) { c.moveTo(11, 12); c.lineTo(11, 84); c.quadraticCurveTo(11, 100, 30, 98); c.moveTo(0, 40); c.lineTo(31, 40); } },
+    S: { w: 60, d(c) { c.ellipse(30, 26, 27, 24, 0, rad(-20), rad(90), true); c.lineTo(30, 50); c.ellipse(30, 75, 28, 25, 0, rad(-90), rad(160), false); } },
+    c: { w: 52, d(c) { c.ellipse(30, 69, 29, 31, 0, rad(-42), rad(42), true); } },
+    n: { w: 42, d(c) { c.moveTo(0, 38); c.lineTo(0, 100); c.moveTo(0, 60); c.arc(21, 60, 21, Math.PI, 0); c.lineTo(42, 100); } }
   };
-  const word = (str, gap = 14, space = 30) => { let x = 0; const out = []; for (const ch of str) { if (ch === ' ') { x += space - gap; continue; } out.push([ch, x]); x += GLYPH[ch].w + gap; } return { glyphs: out, w: x - gap }; };
-  const big = word('DEUS II'), small = word('XP', 12);
-  const k = Math.min(W * 0.82 / big.w, H * 0.12 / 100);
-  const tx = (W - big.w * k) / 2, ty = H * 0.5 - 50 * k;
-  const ks = k * 0.4, sx0 = tx + 2 * k, sy0 = ty - 100 * ks - 16 * k;
-  const holeX = tx + 40 * k, holeY = ty + 50 * k; // Mitte der Öffnung im „D“
-  function counterPath(c) { // Öffnung des „D“ in Bildschirm-Koordinaten
-    c.save(); c.translate(tx, ty); c.scale(k, k);
-    c.beginPath(); c.moveTo(S, S); c.lineTo(30, S); c.arc(30, 50, 50 - S, -Math.PI / 2, Math.PI / 2); c.lineTo(S, 100 - S); c.closePath();
+  const word = (str, gap = 15) => { let x = 0; const out = []; for (const ch of str) { out.push([ch, x]); x += GLYPH[ch].w + gap; } return { glyphs: out, w: x - gap }; };
+  const big = word('HeimatScan');
+  const k = Math.min(W * 0.80 / big.w, H * 0.075 / 100);
+  const tx = (W - big.w * k) / 2, ty = H * 0.47 - 50 * k;
+  const aX = big.glyphs.find(g => g[0] === 'a')[1]; // erstes „a“
+  const holeX = tx + (aX + 27.5) * k, holeY = ty + 69 * k; // Mitte des Bauchs vom ersten „a“
+  function counterPath(c) { // Innenraum des ersten „a“ in Bildschirm-Koordinaten
+    c.save(); c.translate(tx + aX * k, ty); c.scale(k, k);
+    c.beginPath(); c.ellipse(27.5, 69, 26.5 - LW / 2, 31 - LW / 2, 0, 0, TAU);
     c.restore();
   }
   function lettering() {
     const [c, x] = mk();
-    const lines = [[big, tx, ty, k], [small, sx0, sy0, ks]];
-    const pass = (lw, style, ox = 0, oy = 0) => {
-      for (const [wd, X0, Y0, kk] of lines) for (const [ch, gx] of wd.glyphs) {
-        x.save(); x.translate(X0 + ox + gx * kk, Y0 + oy); x.scale(kk, kk);
-        x.beginPath(); GLYPH[ch].d(x); x.lineWidth = lw; x.strokeStyle = style; x.lineCap = 'butt'; x.lineJoin = 'miter'; x.miterLimit = 3; x.stroke();
+    const pass = (lw, style, ox = 0, oy = 0, jitter = 0) => {
+      for (const [ch, gx] of big.glyphs) {
+        x.save(); x.translate(tx + ox + gx * k, ty + oy); x.scale(k, k);
+        if (jitter) x.rotate(jitter * (rnd() - 0.5));
+        x.beginPath(); GLYPH[ch].d(x); x.lineWidth = lw; x.strokeStyle = style; x.lineCap = 'round'; x.lineJoin = 'round'; x.stroke();
         x.restore();
       }
     };
-    // Hilfslinien wie auf einem Skizzenblatt
-    x.strokeStyle = 'rgba(242,239,230,.32)'; x.lineWidth = 0.8;
-    for (const yy of [ty - 0.5, ty + 100 * k + 0.5]) { x.beginPath(); x.moveTo(tx - 22, yy); x.lineTo(tx + big.w * k + 22, yy); x.stroke(); }
-    x.beginPath(); x.moveTo(holeX, ty - 14); x.lineTo(holeX, ty + 100 * k + 14); x.setLineDash([3, 4]); x.stroke(); x.setLineDash([]);
-    pass(S + 9, 'rgba(0,0,0,.35)', 2.5, 3.5);
-    pass(S + 5, INK);
-    pass(S + 5, 'rgba(15,17,12,.6)', 1.1, -0.9); // zweite, leicht versetzte Kontur = Skizzenstrich
-    pass(S, PAPER);
-    // Schraffur im unteren Teil der Buchstaben
-    x.save(); x.globalCompositeOperation = 'source-atop'; x.strokeStyle = 'rgba(70,66,58,.42)'; x.lineWidth = 0.9;
-    for (let i = -H; i < W + H; i += 4.2) { x.beginPath(); x.moveTo(i, ty + 62 * k); x.lineTo(i - 38 * k, ty + 100 * k); x.stroke(); }
-    x.restore();
-    // kleine Markierung an der Öffnung des D (wird zum Durchgang)
-    x.save(); counterPath(x); x.strokeStyle = 'rgba(167,139,250,.9)'; x.lineWidth = 1.2; x.setLineDash([2.5, 3]); x.stroke(); x.restore();
+    // Hilfslinien wie auf einem Skizzenblatt: Oberlinie, x-Höhe, Grundlinie
+    x.strokeStyle = 'rgba(242,239,230,.30)'; x.lineWidth = 0.7;
+    for (const yy of [ty, ty + 38 * k, ty + 100 * k]) { x.beginPath(); x.moveTo(tx - 26, yy); x.lineTo(tx + big.w * k + 26, yy); x.stroke(); }
+    x.beginPath(); x.moveTo(holeX, ty - 16); x.lineTo(holeX, ty + 100 * k + 16); x.setLineDash([2, 4]); x.stroke(); x.setLineDash([]);
+    pass(LW + 7, 'rgba(0,0,0,.42)', 1.5, 2.5);          // weicher Schatten für Lesbarkeit
+    pass(LW + 2.2, INK);                                  // Tuschekontur
+    pass(LW, PAPER);                                      // Strich
+    pass(1.1, 'rgba(242,239,230,.55)', 1.6, -1.4, 0.03);  // zweiter, leicht versetzter Bleistiftstrich
+    pass(0.9, 'rgba(15,17,12,.45)', -1.2, 1.1, 0.03);
+    x.save(); counterPath(x); x.strokeStyle = 'rgba(167,139,250,.9)'; x.lineWidth = 1.1; x.setLineDash([2.5, 3]); x.stroke(); x.restore();
     return c;
+  }
+  /* „powered by LAMPYRIUS“ unten – mit Logo-Datei, falls vorhanden */
+  const logo = new Image(); let logoOk = false;
+  logo.onload = () => { logoOk = logo.naturalWidth > 0; }; logo.src = 'icons/lampyrius-logo.png';
+  function powered(c, alpha) {
+    if (alpha <= 0) return;
+    const y = H - Math.max(34, H * 0.06);
+    c.save(); c.globalAlpha = alpha; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    c.shadowColor = 'rgba(0,0,0,.55)'; c.shadowBlur = 6;
+    c.fillStyle = 'rgba(242,239,230,.82)'; c.font = '300 11px -apple-system, "SF Pro Text", system-ui, sans-serif';
+    c.fillText('powered by', W / 2, y - (logoOk ? 30 : 18));
+    if (logoOk) {
+      // Logo in Originalfarben auf heller Plakette, damit das Dunkelblau auf dem Wald lesbar bleibt
+      const h = 22, w = h * logo.naturalWidth / logo.naturalHeight, px = 10, py = 6;
+      c.shadowBlur = 10; c.fillStyle = 'rgba(242,239,230,.94)';
+      c.beginPath(); c.roundRect ? c.roundRect(W / 2 - w / 2 - px, y - h + 4 - py, w + 2 * px, h + 2 * py, 10) : c.rect(W / 2 - w / 2 - px, y - h + 4 - py, w + 2 * px, h + 2 * py); c.fill();
+      c.shadowBlur = 0; c.drawImage(logo, W / 2 - w / 2, y - h + 4, w, h);
+    } else {
+      c.fillStyle = '#19b7a8'; c.font = '600 15px -apple-system, "SF Pro Display", system-ui, sans-serif';
+      if ('letterSpacing' in c) c.letterSpacing = '3px';
+      c.fillText('LAMPYRIUS', W / 2, y);
+    }
+    c.restore();
   }
 
   /* ---------- Metalldetektor als Tuschezeichnung ---------- */
@@ -224,7 +245,7 @@
   }
 
   /* ---------- Ablauf ---------- */
-  const T_SWEEP0 = 450, T_SWEEP1 = 1900, T_ZOOM0 = 2250, T_END = 3000; // 3 s
+  const T_SWEEP0 = 220, T_SWEEP1 = 1180, T_ZOOM0 = 1380, T_END = 2000; // 2 s
   const A0 = rad(-30), A1 = rad(30);
   const ease = t => (1 - Math.cos(Math.PI * t)) / 2; // gleichmäßiger Schwung, damit man den Detektor sieht
   let A, B, T, t0 = 0, done = false;
@@ -264,7 +285,7 @@
           ctx.lineCap = 'round';
           for (const [lw, a] of [[10, 0.12], [3, 0.35], [1.2, 0.95]]) { ctx.strokeStyle = `rgba(167,139,250,${a})`; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(pivot[0], pivot[1]); ctx.lineTo(pivot[0] + dx * F, pivot[1] + dy * F); ctx.stroke(); }
           for (let r = 0; r < 3; r++) {
-            const ph = ((t / 320) + r / 3) % 1;
+            const ph = ((t / 240) + r / 3) % 1;
             ctx.strokeStyle = `rgba(167,139,250,${0.55 * (1 - ph)})`; ctx.lineWidth = 1.4;
             ctx.beginPath(); ctx.ellipse(cx, cy, 30 + ph * 70, 19 + ph * 45, Math.atan2(dy, dx) + Math.PI / 2, 0, TAU); ctx.stroke();
           }
@@ -272,6 +293,7 @@
       }
       ctx.drawImage(T, 0, 0, W, H);
       if (t >= T_SWEEP0 - 120 && u < 1) detector(ctx, ang);
+      powered(ctx, Math.min(1, t / 200));
     } else {
       // Zoom durch das „D“
       const u = Math.min(1, (t - T_ZOOM0) / (T_END - T_ZOOM0)), e = u * u * u, s = Math.exp(Math.log(90) * e);
@@ -279,6 +301,7 @@
       ctx.drawImage(B, 0, 0, W, H); ctx.drawImage(T, 0, 0, W, H);
       ctx.globalCompositeOperation = 'destination-out'; counterPath(ctx); ctx.fill();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.globalCompositeOperation = 'source-over'; powered(ctx, 1 - u * 3);
       if (u > 0.82) cv.style.opacity = String(1 - (u - 0.82) / 0.18);
       if (u >= 1 && !dbg) return finish();
     }
@@ -288,5 +311,5 @@
     A = forest(); B = dgm(); T = lettering();
     requestAnimationFrame(frame);
   } catch (e) { console.warn('Intro', e); finish(); }
-  if (!dbg) setTimeout(finish, 6000); // Sicherheitsnetz
+  if (!dbg) setTimeout(finish, 4500); // Sicherheitsnetz
 })();

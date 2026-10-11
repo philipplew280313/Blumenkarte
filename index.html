@@ -31,8 +31,8 @@
 html,body{margin:0;height:100%;background:#14130f;color:var(--ink);overflow:hidden;overscroll-behavior:none}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
 input,textarea{font:inherit;color:var(--ink)}
-#map{position:fixed;inset:0;background:#2a2822}
-.leaflet-container{background:#2a2822;font:inherit}
+#map{position:fixed;inset:0;background:#55585c}
+.leaflet-container{background:#55585c;font:inherit}
 [hidden]{display:none!important}
 .leaflet-control-attribution{background:rgba(20,19,15,.55)!important;color:#ddd!important;font-size:9px!important;border-radius:6px 0 0 0;max-width:62vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 .leaflet-control-attribution.open{white-space:normal;max-width:calc(100vw - 24px)}
@@ -83,6 +83,8 @@ input,textarea{font:inherit;color:var(--ink)}
 #dlChip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 112px);z-index:520;display:flex;align-items:center;gap:9px;padding:8px 15px 8px 10px;border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis}
 #dlChip .ring{flex:none;width:18px;height:18px;border-radius:50%;background:conic-gradient(var(--accent) var(--p,0deg),rgba(255,255,255,.18) 0);-webkit-mask:radial-gradient(circle 5px,transparent 97%,#000 100%);mask:radial-gradient(circle 5px,transparent 97%,#000 100%)}
 #dlChip.ok .ring{background:var(--leaf)}
+#dlChipX{flex:none;margin:-8px -9px -8px 2px;padding:6px 10px 6px 8px;font-size:20px;line-height:1;font-weight:400;color:var(--ink-2);border-left:1px solid rgba(255,255,255,.16)}
+#dlChip.run #dlChipX{display:none}
 #dlChip.warn .ring{background:#ff9f3b}
 body.drawing #dlChip,body.placing #dlChip{bottom:calc(var(--sab) + 205px)}
 
@@ -154,6 +156,20 @@ body.sheet-open #sheet{transform:none}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:10px;border-radius:12px;overflow:hidden}
 .grid button{position:relative;aspect-ratio:1;background:#000}
 .grid img{width:100%;height:100%;object-fit:cover;display:block}
+.kindseg{display:flex;margin-top:14px;padding:3px;border-radius:13px;background:var(--field);border:1px solid var(--line)}
+.kindseg button{flex:1;padding:10px 6px;border-radius:10px;font-size:15px;font-weight:600;color:var(--ink-2)}
+.kindseg button.on{background:var(--accent);color:#fff}
+.field2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.strip{display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.strip img{flex:none;width:58px;height:58px;border-radius:10px;object-fit:cover;opacity:.7;border:2px solid transparent}
+.strip img.on{opacity:1;border-color:var(--accent)}
+.strip button{flex:none;height:58px;padding:0 12px;border-radius:10px;border:1.5px dashed var(--line);color:var(--accent);font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.strip button svg{width:20px;height:20px}
+.legal p{margin:0 0 14px;line-height:1.5;font-size:15px;color:var(--ink-2)}
+.legal b{color:var(--ink)}
+.legal a{color:var(--accent)}
+.kindline{margin-top:10px;font-size:14px;font-weight:600;color:var(--ink-2)}
+.grid .np{position:absolute;top:5px;right:5px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:rgba(0,0,0,.65);font-size:11px;font-weight:700;line-height:20px}
 .grid .cap{position:absolute;left:0;right:0;bottom:0;padding:14px 6px 5px;font-size:11px;font-weight:600;text-align:left;background:linear-gradient(transparent,rgba(0,0,0,.75));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .search{width:100%;background:var(--field);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:16px;outline:none}
 .empty{text-align:center;color:var(--ink-3);padding:40px 10px;line-height:1.5}
@@ -207,14 +223,14 @@ body.sheet-open #sheet{transform:none}
 </div>
 
 <div id="bottombar">
-  <button id="btnList" class="round glass" aria-label="Alle Blumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg><span class="badge" id="count" hidden>0</span></button>
+  <button id="btnList" class="round glass" aria-label="Alle Funde"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg><span class="badge" id="count" hidden>0</span></button>
   <button id="btnShoot" aria-label="Foto aufnehmen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.3l1.4-2h5.6l1.4 2h1.3A2.5 2.5 0 0 1 20 8.5v9A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.6"/></svg></button>
   <button id="btnMenu" class="round glass" aria-label="Menü" style="position:relative"><span id="menuDot" hidden style="position:absolute;top:2px;right:2px;width:13px;height:13px;border-radius:50%;background:#ff9f3b;border:2px solid #14130f"></span><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
 </div>
 
 <div id="pin"><svg viewBox="0 0 24 24"><path fill="#8b5cf6" stroke="#fff" stroke-width="1.5" d="M12 22s7-6.4 7-12A7 7 0 0 0 5 10c0 5.6 7 12 7 12Z"/><circle cx="12" cy="10" r="2.6" fill="#fff"/></svg></div>
 <div id="pinbar" class="glass">
-  <p>Karte verschieben, bis die Nadel auf der Blume steht</p>
+  <p>Karte verschieben, bis die Nadel auf dem Fundort steht</p>
   <div class="row" style="margin:0">
     <button class="btn" id="pinCancel">Abbrechen</button>
     <button class="btn" id="pinMe">Mein Standort</button>
@@ -235,7 +251,7 @@ body.sheet-open #sheet{transform:none}
   <div class="row" style="margin:0"><button class="btn" id="drawUndo">Rückgängig</button><button class="btn primary" id="drawDone">Fertig</button></div>
 </div>
 
-<button id="dlChip" class="glass" hidden><i class="ring"></i><span id="dlChipTxt"></span></button>
+<button id="dlChip" class="glass" hidden><i class="ring"></i><span id="dlChipTxt"></span><span id="dlChipX" role="button" aria-label="Hinweis schließen">×</span></button>
 
 <div id="backdrop"></div>
 <div id="sheet" role="dialog" aria-modal="true">
@@ -249,9 +265,11 @@ body.sheet-open #sheet{transform:none}
 
 <input type="file" id="inCamera" class="hidden-input" accept="image/*" capture="environment">
 <input type="file" id="inGallery" class="hidden-input" accept="image/*" multiple>
+<input type="file" id="inMoreCam" class="hidden-input" accept="image/*" capture="environment">
+<input type="file" id="inMore" class="hidden-input" accept="image/*" multiple>
 <input type="file" id="inBackup" class="hidden-input" accept=".zip,application/zip" multiple>
 <input type="file" id="inShapes" class="hidden-input" accept=".geojson,.json,application/geo+json,application/json">
-<datalist id="arten"></datalist>
+<datalist id="namen"></datalist><datalist id="laender"></datalist><datalist id="materialien"></datalist>
 
 <script src="vendor/leaflet.js"></script>
 <script src="regions.js"></script>

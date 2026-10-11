@@ -46,6 +46,7 @@ async function shareFiles(files, text) {
 }
 
 const ICON = {
+  cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/><path d="M19 2v4M17 4h4" stroke-linecap="round"/></svg>',
   pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s6.5-5.8 6.5-11A6.5 6.5 0 0 0 5.5 10c0 5.2 6.5 11 6.5 11Z"/><circle cx="12" cy="10" r="2.3"/></svg>',
   nav: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg>',
   share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>',
@@ -91,7 +92,7 @@ const SRC = {
 const TH_ATTR = ' · Thüringen © GDI-Th, <a href="https://creativecommons.org/licenses/by/4.0/deed.de">CC BY 4.0</a>';
 const LAYERS = {
   dop: { label: 'Luftbild aktuell', sub: 'Brandenburg, Berlin, Sachsen & Thüringen · 20 cm', short: 'Luftbild', sources: [SRC.bbDop, SRC.snDop, SRC.thDop], maxNative: 18, offline: true, kb: 75, attr: 'Luftbild © GeoBasis-DE/LGB, © GeoSN, ' + DL_DE + TH_ATTR },
-  hist: { label: 'Historisch', sub: 'Brandenburg 1953 (Luftbild) · Sachsen 1965 (Satellit) · für Thüringen gibt es keins als Karte', short: 'Historisch', sources: [SRC.bb53, SRC.sn65], maxNative: 16, offline: true, kb: 40, attr: 'BB 1953 © GeoBasis-DE/LGB, ' + DL_DE + ' · SN 1965 © GeoSN/USGS, CC BY-NC-SA 2.0' },
+  hist: { label: 'Historisch', sub: 'Brandenburg 1953 (Luftbild) · Sachsen 1965 (Satellit) · für Thüringen gibt es keins als Karte', short: 'Historisch', sources: [SRC.bb53, SRC.sn65], png: true, maxNative: 16, offline: true, kb: 60, attr: 'BB 1953 © GeoBasis-DE/LGB, ' + DL_DE + ' · SN 1965 © GeoSN/USGS, CC BY-NC-SA 2.0' },
   dgm: { label: 'Geländemodell', sub: 'Brandenburg & Berlin 1 m · Sachsen & Thüringen 2 m', short: 'Gelände', sources: [SRC.bbDgm, SRC.snDgm, SRC.thDgm], maxNative: 17, offline: true, kb: 45, attr: 'DGM © GeoBasis-DE/LGB, © GeoSN, ' + DL_DE + TH_ATTR },
   esri: { label: 'Satellit weltweit (Esri)', sub: 'Nur online', xyz: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxNative: 19, attr: 'Esri, Maxar, Earthstar Geographics' },
   osm: { label: 'OpenStreetMap', sub: 'Nur online', xyz: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', maxNative: 19, attr: '© OpenStreetMap-Mitwirkende' }
@@ -142,7 +143,7 @@ function regionState(rk, z, x, y) {
     for (let i = 0, j = P.length - 1; i < P.length && !hit; j = i++) hit = segHitsRect(P[j], P[i], rr);
     v = hit ? 1 : pip((t.s + t.n) / 2, (t.w + t.e) / 2, P) ? 2 : 0;
   }
-  if (regionCache.size > 300000) regionCache.clear();
+  if (regionCache.size > 60000) regionCache.clear();
   regionCache.set(key, v);
   return v;
 }
@@ -157,7 +158,8 @@ function tileUrls(def, z, x, y) {
   if (def.xyz) return [def.xyz.replace('{z}', z).replace('{x}', x).replace('{y}', y)];
   if (def.minZoom && z < def.minZoom) return [];
   const parts = def.sources.filter(s => !s.minZ || z >= s.minZ).map(s => [s, regionState(s.region, z, x, y)]).filter(p => p[1]);
-  const png = def.png || parts.length > 1;
+  // An Landesgrenzen (und bei mehreren Quellen) durchsichtiges PNG: außerhalb der Daten bleibt der graue Hintergrund statt Weiß
+  const png = def.png || parts.length > 1 || parts.some(p => p[1] === 1);
   return parts.map(([s]) => wmsUrl(s, z, x, y, png));
 }
 // Info-Ebene der LGB zum Luftbild 1953 (Abdeckungsübersicht)
@@ -185,17 +187,22 @@ const TileStore = NATIVE ? {
   },
   localSrc(url) { return this.base && window.Capacitor.convertFileSrc ? window.Capacitor.convertFileSrc(this.base + '/' + tileRel(url)) : null; },
   async has(url) { try { const s = await callNative('Filesystem', 'stat', { path: 'kacheln/' + tileRel(url), directory: this.dir }); return !s || s.size === undefined || +s.size > 0; } catch { return false; } },
+  /* Kachel laden und als Datei im App-Ordner ablegen (Library/kacheln, nicht in iCloud):
+     1. Bild per nativer HTTP-Abfrage holen (ohne Browser-Sperren, kommt als Base64)
+     2. prüfen, ob es wirklich ein JPEG/PNG ist (Server liefern bei Fehlern Text)
+     3. mit Filesystem.writeFile speichern – angezeigt wird es später direkt aus der Datei */
   async download(url) {
     const path = 'kacheln/' + tileRel(url), directory = this.dir;
-    await withTimeout(callNative('Filesystem', 'downloadFile', { url, path, directory, recursive: true }), 45000, 'Server antwortet nicht');
-    let size = 0;
-    try { size = +(await callNative('Filesystem', 'stat', { path, directory })).size || 0; } catch { throw new Error('Datei wurde nicht gespeichert'); }
-    if (size < 6000) { // kleine Datei: echtes Bild oder Fehlermeldung des Servers?
-      const r = await callNative('Filesystem', 'readFile', { path, directory });
-      const head = atob(String(r.data).replace(/^data:[^,]*,/, '').slice(0, 12)), bytes = [...head].map(c => c.charCodeAt(0));
-      if (!looksLikeImage(bytes)) { await callNative('Filesystem', 'deleteFile', { path, directory }).catch(() => { }); throw new Error('Server lieferte kein Bild'); }
-    }
-    return size;
+    let r;
+    try { r = await withTimeout(callNative('CapacitorHttp', 'request', { url, method: 'GET', responseType: 'blob', connectTimeout: 20000, readTimeout: 30000 }), 45000, 'Server antwortet nicht'); }
+    catch (e) { throw new Error(/Zeit|timed? ?out/i.test(e.message) ? 'Server antwortet nicht' : 'Keine Verbindung'); }
+    if (r.status && (r.status < 200 || r.status >= 300)) throw new Error('Server-Fehler ' + r.status);
+    if (typeof r.data !== 'string' || !r.data) throw new Error('Server lieferte kein Bild');
+    const b64 = r.data.replace(/^data:[^,]*,/, '');
+    const head = atob(b64.slice(0, 16)), bytes = [...head].map(c => c.charCodeAt(0));
+    if (!looksLikeImage(bytes)) throw new Error('Server lieferte kein Bild');
+    await callNative('Filesystem', 'writeFile', { path, directory, data: b64, recursive: true });
+    return Math.floor(b64.length * 3 / 4);
   },
   remove(url) { return callNative('Filesystem', 'deleteFile', { path: 'kacheln/' + tileRel(url), directory: this.dir }).catch(() => { }); },
   clear() { return callNative('Filesystem', 'rmdir', { path: 'kacheln', directory: this.dir, recursive: true }).catch(() => { }); }
@@ -226,7 +233,7 @@ const viewQueue = [], viewSeen = new Set();
 let viewBusy = 0;
 function queueViewSave(urls) {
   if (!NATIVE || !store.get('saveViewed', true) || !TileStore.base) return;
-  for (const u of urls) if (!viewSeen.has(u) && /isk\.geobasis-bb\.de|geodienste\.sachsen\.de|geoproxy\.geoportal-th\.de|arcgisonline\.com\/ArcGIS\/rest\/services\/Reference/.test(u)) { viewSeen.add(u); viewQueue.push(u); }
+  for (const u of urls) if (!viewSeen.has(u) && /isk\.geobasis-bb\.de|geodienste\.sachsen\.de|geoproxy\.geoportal-th\.de|arcgisonline\.com\/ArcGIS\/rest\/services\/Reference/.test(u)) { if (viewSeen.size > 20000) viewSeen.clear(); viewSeen.add(u); viewQueue.push(u); }
   if (viewQueue.length > 400) viewQueue.splice(0, viewQueue.length - 400);
   pumpViewQueue();
 }
@@ -270,10 +277,12 @@ const DefTileLayer = L.TileLayer.extend({
     this.def = def;
     L.TileLayer.prototype.initialize.call(this, '', Object.assign({
       maxNativeZoom: def.maxNative, maxZoom: 21, attribution: def.attr || '',
-      bounds: def.sources ? ALL_BOUNDS : undefined, keepBuffer: 3
+      bounds: def.sources ? ALL_BOUNDS : undefined, keepBuffer: 1,
+      // erst nach dem Zoomen laden: schnelles Rauszoomen erzeugt sonst hunderte Bilder auf einmal (Speicher!)
+      updateWhenZooming: false
     }, opts || {}));
   },
-  // Alte Kacheln länger behalten (bis 4 Stufen tiefer / 8 höher), bis die neuen wirklich da sind
+  // Alte Kacheln behalten, bis die neuen wirklich da sind (der grobe Hintergrund deckt den Rest)
   _pruneTiles() {
     if (!this._map) return;
     const zoom = this._map.getZoom();
@@ -281,7 +290,7 @@ const DefTileLayer = L.TileLayer.extend({
     for (const k in this._tiles) this._tiles[k].retain = this._tiles[k].current;
     for (const k in this._tiles) {
       const t = this._tiles[k];
-      if (t.current && !t.active) { const c = t.coords; if (!this._retainParent(c.x, c.y, c.z, c.z - 8)) this._retainChildren(c.x, c.y, c.z, c.z + 4); }
+      if (t.current && !t.active) { const c = t.coords; if (!this._retainParent(c.x, c.y, c.z, c.z - 5)) this._retainChildren(c.x, c.y, c.z, c.z + 2); }
     }
     for (const k in this._tiles) if (!this._tiles[k].retain) this._removeTile(k);
   },
@@ -622,12 +631,24 @@ const IDB = (() => {
 })();
 const DB = IDB('photos');
 
-let entries = []; // {id, created, lat, lng, acc, title, note, thumb, thumbUrl}
+let entries = []; // {id, created, lat, lng, acc, kind, title, year, material, land, note, thumb, thumbUrl, nPhotos}
+/* Vorschaubilder als data:-Adressen zwischenspeichern. Vorher wurden die Blob-Adressen bei jedem Speichern
+   neu erzeugt und die alten sofort freigegeben – iOS zeigte dann kurz ein „?“ statt des Bildes. */
+const thumbCache = new Map();
+const blobToDataURL = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+async function thumbDataURL(id, thumb) {
+  const k = id + ':' + (thumb?.size || 0);
+  let v = thumbCache.get(k);
+  if (!v) { v = thumb ? await blobToDataURL(thumb).catch(() => '') : ''; thumbCache.set(k, v); }
+  return v;
+}
 async function loadEntries() {
   const all = await DB.all();
-  entries.forEach(e => URL.revokeObjectURL(e.thumbUrl));
-  entries = all.map(({ blob, ...m }) => ({ ...m, thumbUrl: URL.createObjectURL(m.thumb) }));
-  entries.sort((a, b) => b.created - a.created);
+  const next = await Promise.all(all.map(async ({ blob, more, ...m }) => ({ ...m, kind: m.kind || 'fund', nPhotos: 1 + (more ? more.length : 0), thumbUrl: await thumbDataURL(m.id, m.thumb) })));
+  next.sort((a, b) => b.created - a.created);
+  const keep = new Set(next.map(e => e.id + ':' + (e.thumb?.size || 0)));
+  for (const k of thumbCache.keys()) if (!keep.has(k)) thumbCache.delete(k);
+  entries = next;
   refresh();
 }
 function shapesNeedBackup() { return typeof shapes !== 'undefined' && shapes.length > 0 && store.get('shapesChanged', 0) > store.get('lastBackup', 0); }
@@ -636,8 +657,12 @@ function refresh() {
   renderMarkers();
   const c = $('#count'); c.hidden = !entries.length; c.textContent = entries.length;
   updateMenuDot();
-  const names = [...new Set(entries.map(e => (e.title || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'de'));
-  $('#arten').innerHTML = names.map(n => `<option value="${esc(n)}">`).join('');
+  // Vorschläge aus früheren Einträgen (z. B. „Deutschland“ einmal getippt → kommt beim nächsten Mal als Vorschlag)
+  const uniq = (f, extra = []) => [...new Set([...entries.map(e => (e[f] || '').trim()), ...extra].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'de'));
+  const fill = (id, list) => { $(id).innerHTML = list.map(n => `<option value="${esc(n)}">`).join(''); };
+  fill('#namen', uniq('title'));
+  fill('#laender', uniq('land'));
+  fill('#materialien', uniq('material', ['Aluminium', 'Bronze', 'Blei', 'Eisen', 'Gold', 'Kupfer', 'Messing', 'Silber', 'Zink', 'Zinn', 'Keramik', 'Glas', 'Knochen']));
 }
 
 /* ============================================================
@@ -716,7 +741,7 @@ function pickPosition(start, prompt) {
   return new Promise(resolve => {
     hideSheet(); setFollow(false);
     document.body.classList.add('placing');
-    $('#pinbar p').textContent = prompt || 'Karte verschieben, bis die Nadel auf der Blume steht';
+    $('#pinbar p').textContent = prompt || 'Karte verschieben, bis die Nadel auf dem Fundort steht';
     if (start) map.setView([start.lat, start.lng], Math.max(map.getZoom(), 18));
     const done = v => { document.body.classList.remove('placing'); ok.onclick = cancel.onclick = me.onclick = null; resolve(v); };
     const ok = $('#pinOk'), cancel = $('#pinCancel'), me = $('#pinMe');
@@ -821,9 +846,9 @@ function exifSegment(rec) {
   const dms = x => { x = Math.abs(x); const d = Math.floor(x), m = Math.floor((x - d) * 60), s = Math.round(((x - d) * 60 - m) * 60 * 10000); return [[d, 1], [m, 1], [s, 10000]]; };
   const pad = n => String(n).padStart(2, '0'), dt = new Date(rec.created);
   const dts = `${dt.getFullYear()}:${pad(dt.getMonth() + 1)}:${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
-  const desc = ([rec.title, rec.note].filter(Boolean).join(' - ') || 'Blume')
+  const desc = ([rec.title, rec.year, rec.material, rec.land, rec.note].filter(Boolean).join(' - ') || (rec.kind === 'gebaeude' ? 'Gebaeude' : 'Fund'))
     .replace(/[äöüÄÖÜß]/g, c => ({ ä: 'ae', ö: 'oe', ü: 'ue', Ä: 'Ae', Ö: 'Oe', Ü: 'Ue', ß: 'ss' }[c])).replace(/[^\x20-\x7e]/g, '');
-  const json = JSON.stringify({ bk: 1, id: rec.id, title: rec.title || '', note: rec.note || '', created: rec.created, updated: rec.updated || rec.created, lat: rec.lat, lng: rec.lng, acc: rec.acc ?? null })
+  const json = JSON.stringify({ bk: 1, id: rec.id, pid: rec.pid || undefined, pcreated: rec.pcreated || undefined, kind: rec.kind || 'fund', title: rec.title || '', year: rec.year || '', material: rec.material || '', land: rec.land || '', note: rec.note || '', created: rec.created, updated: rec.updated || rec.created, lat: rec.lat, lng: rec.lng, acc: rec.acc ?? null })
     .replace(/[\u0080-￿]/g, c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
   const uc = cat([utf8('ASCII\0\0\0'), utf8(json)]);
   const gps = [
@@ -840,8 +865,8 @@ function exifSegment(rec) {
 }
 function xmpSegment(rec) {
   const x = s => String(s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
-  const desc = [rec.title, rec.note].filter(Boolean).join(' – ');
-  const pkt = `<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?><x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title><rdf:Alt><rdf:li xml:lang="x-default">${x(rec.title || 'Blume')}</rdf:li></rdf:Alt></dc:title><dc:description><rdf:Alt><rdf:li xml:lang="x-default">${x(desc)}</rdf:li></rdf:Alt></dc:description></rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end="w"?>`;
+  const desc = [KINDS[rec.kind] || 'Fund', rec.year, rec.material, rec.land, rec.note].filter(Boolean).join(' – ');
+  const pkt = `<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?><x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title><rdf:Alt><rdf:li xml:lang="x-default">${x(rec.title || KINDS[rec.kind] || 'Fund')}</rdf:li></rdf:Alt></dc:title><dc:description><rdf:Alt><rdf:li xml:lang="x-default">${x(desc)}</rdf:li></rdf:Alt></dc:description></rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end="w"?>`;
   const body = cat([utf8('http://ns.adobe.com/xap/1.0/\0'), utf8(pkt)]).slice(0, 65000), L = body.length + 2;
   return cat([new Uint8Array([0xFF, 0xE1, L >> 8, L & 255]), body]);
 }
@@ -855,7 +880,7 @@ function tagJpeg(u8, rec) { // synchron, damit das Teilen-Menü direkt nach dem 
   }
   return new Blob([new Uint8Array([0xFF, 0xD8]), ...keep, exifSegment(rec), xmpSegment(rec), u8.subarray(o)], { type: 'image/jpeg' });
 }
-const fileName = r => `${(r.title || 'blume').replace(/[^\wäöüÄÖÜß-]+/g, '_')}_${new Date(r.created).toISOString().slice(0, 10)}_${r.id}.jpg`;
+const fileName = r => `${(r.title || 'fund').replace(/[^\wäöüÄÖÜß-]+/g, '_')}_${new Date(r.created).toISOString().slice(0, 10)}_${r.id}${r.pid ? '_' + r.pid : ''}.jpg`;
 // Öffnet das iOS-Teilen-Menü („Bild sichern“ / „X Bilder sichern“). Muss direkt im Tipp-Handler laufen.
 function shareToPhotos(recs, u8s) {
   const files = recs.map((r, i) => new File([tagJpeg(u8s[i], r)], fileName(r), { type: 'image/jpeg' }));
@@ -867,12 +892,52 @@ async function markInPhotos(ids) {
 }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
+/* ---------- Funde: Art, Datierung, Material, Herkunft; mehrere Fotos pro Fund ----------
+   Datensatz: { id, created, updated, lat, lng, acc, kind: 'fund'|'gebaeude', title, year, material, land, note,
+                blob, thumb (Hauptfoto), more: [{ pid, created, blob, thumb }] (weitere Fotos), inPhotos, photosStale } */
+const KINDS = { fund: 'Fund', gebaeude: 'Gebäude' };
+const photosOf = r => [{ pid: null, blob: r.blob, thumb: r.thumb, created: r.created }, ...(r.more || [])];
+async function prepPhoto(file) {
+  const { img, url } = await loadImg(file);
+  try { const [clean, thumb] = await Promise.all([encodeClean(img), makeThumb(img)]); return { clean, thumb }; }
+  finally { URL.revokeObjectURL(url); }
+}
+// zusätzliche Fotos: Kamera direkt oder (ohne „capture“) das iOS-Menü Foto aufnehmen / Mediathek
+let moreCb = null;
+function pickMorePhotos(camera) {
+  return new Promise(res => { moreCb = res; const inp = $(camera ? '#inMoreCam' : '#inMore'); inp.value = ''; inp.click(); });
+}
+for (const sel of ['#inMoreCam', '#inMore']) $(sel).addEventListener('change', e => { const f = [...e.target.files], cb = moreCb; moreCb = null; if (cb && f.length) cb(f); });
+const metaLine = r => [KINDS[r.kind] || 'Fund', r.year, r.material, r.land].filter(Boolean).map(esc).join(' · ');
+function fundFields(r = {}) {
+  const k = r.kind || store.get('lastKind', 'fund');
+  return `<div class="seg kindseg" id="fKind" role="radiogroup">${Object.entries(KINDS).map(([v, l]) => `<button type="button" data-kind="${v}" class="${v === k ? 'on' : ''}" aria-pressed="${v === k}">${l}</button>`).join('')}</div>
+    <label class="field"><span>Bezeichnung</span><input id="fTitle" list="namen" value="${esc(r.title || '')}" placeholder="${k === 'gebaeude' ? 'z. B. Gutshaus, Bunker, Mühle' : 'z. B. Pfennig, Gürtelschnalle, Knopf'}" autocomplete="off"></label>
+    <div class="field2">
+      <label class="field"><span>Jahr / Datierung</span><input id="fYear" value="${esc(r.year || '')}" placeholder="z. B. 1938" autocomplete="off"></label>
+      <label class="field"><span>Material</span><input id="fMat" list="materialien" value="${esc(r.material || '')}" placeholder="z. B. Kupfer" autocomplete="off"></label>
+    </div>
+    <label class="field"><span>Land / Herkunft</span><input id="fLand" list="laender" value="${esc(r.land || '')}" placeholder="z. B. Deutschland" autocomplete="off"></label>
+    <label class="field"><span>Notiz</span><textarea id="fNote" placeholder="Fundumstände, Tiefe, Zustand …">${esc(r.note || '')}</textarea></label>`;
+}
+function wireFundFields(body) {
+  $('#fKind', body).addEventListener('click', e => {
+    const b = e.target.closest('button[data-kind]'); if (!b) return;
+    body.querySelectorAll('#fKind button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
+    $('#fTitle', body).placeholder = b.dataset.kind === 'gebaeude' ? 'z. B. Gutshaus, Bunker, Mühle' : 'z. B. Pfennig, Gürtelschnalle, Knopf';
+  });
+}
+function readFundFields(body) {
+  const kind = $('#fKind .on', body)?.dataset.kind || 'fund'; store.set('lastKind', kind);
+  return { kind, title: $('#fTitle', body).value.trim(), year: $('#fYear', body).value.trim(), material: $('#fMat', body).value.trim(), land: $('#fLand', body).value.trim(), note: $('#fNote', body).value.trim() };
+}
+
 /* ============================================================
-   Neues Foto
+   Neuer Fund
    ============================================================ */
 let shotFix = null;
 $('#btnShoot').addEventListener('click', () => {
-  shotFix = freshFix(); // Position im Moment des Tippens – du stehst ja an der Blume
+  shotFix = freshFix(); // Position im Moment des Tippens – du stehst ja am Fundort
   $('#inCamera').value = ''; $('#inCamera').click();
 });
 $('#inCamera').addEventListener('change', async e => {
@@ -886,54 +951,83 @@ $('#inCamera').addEventListener('change', async e => {
 $('#inGallery').addEventListener('change', async e => {
   const files = [...e.target.files]; if (!files.length) return;
   closeSheet();
-  const plain = []; let restored = 0, same = 0;
+  const plain = [], extras = []; let restored = 0, same = 0;
   for (const [i, f] of files.entries()) {
     const ex = await readExif(f);
     if (ex?.bk && ex.bk.lat != null) { // Foto, das die App selbst in der Mediathek gesichert hat
+      if (ex.bk.pid) { extras.push([f, ex.bk]); continue; } // weiteres Foto eines Funds: nach den Hauptfotos zuordnen
       if (files.length > 3) toast(`Wiederherstellen … ${i + 1}/${files.length}`, 1500);
       (await restoreFromPhoto(f, ex.bk)) ? restored++ : same++;
     } else plain.push([f, ex]);
   }
-  if (restored || same) { await loadEntries(); toast(`${restored} ${restored === 1 ? "Blume" : "Blumen"} wiederhergestellt${same ? `, ${same} schon vorhanden` : ''}`, 4000); }
+  for (const [f, bk] of extras) (await restoreExtraPhoto(f, bk)) ? restored++ : same++;
+  if (restored || same) { await loadEntries(); toast(`${restored} ${restored === 1 ? 'Foto' : 'Fotos'} wiederhergestellt${same ? `, ${same} schon vorhanden` : ''}`, 4000); }
   for (const [f, ex] of plain) {
     const pos = ex && ex.lat != null ? { lat: ex.lat, lng: ex.lng, acc: null, exif: true } : null;
     const ok = await newEntryFlow(f, pos, ex?.date || f.lastModified || Date.now(), plain.length > 1);
     if (ok === 'abort') break;
   }
 });
+const bkFields = bk => ({ kind: bk.kind || 'fund', title: bk.title || '', year: bk.year || '', material: bk.material || '', land: bk.land || '', note: bk.note || '' });
 async function restoreFromPhoto(file, bk) {
   const old = await DB.get(bk.id);
   if (old && (old.updated || old.created) >= (bk.updated || bk.created)) return false;
-  const { img, url } = await loadImg(file);
-  try {
-    const [clean, thumb] = await Promise.all([encodeClean(img), makeThumb(img)]);
-    await DB.put({ id: bk.id, created: bk.created, updated: bk.updated || bk.created, lat: bk.lat, lng: bk.lng, acc: bk.acc ?? null, title: bk.title || '', note: bk.note || '', blob: clean.blob, thumb, clean: true, inPhotos: true });
-    return true;
-  } finally { URL.revokeObjectURL(url); }
+  const { clean, thumb } = await prepPhoto(file);
+  await DB.put({ id: bk.id, created: bk.created, updated: bk.updated || bk.created, lat: bk.lat, lng: bk.lng, acc: bk.acc ?? null, ...bkFields(bk), blob: clean.blob, thumb, more: old?.more || [], clean: true, inPhotos: true });
+  return true;
+}
+async function restoreExtraPhoto(file, bk) {
+  let r = await DB.get(bk.id);
+  if (r && (r.more || []).some(m => m.pid === bk.pid)) return false;
+  const { clean, thumb } = await prepPhoto(file);
+  const item = { pid: bk.pid, created: bk.pcreated || bk.created, blob: clean.blob, thumb };
+  if (!r) { // Hauptfoto fehlt: dieses Foto wird vorerst zum Hauptfoto
+    r = { id: bk.id, created: bk.created, updated: bk.updated || bk.created, lat: bk.lat, lng: bk.lng, acc: bk.acc ?? null, ...bkFields(bk), blob: clean.blob, thumb, more: [], clean: true, inPhotos: true };
+  } else (r.more ||= []).push(item);
+  await DB.put(r);
+  return true;
 }
 
 async function newEntryFlow(file, pos, created, batch) {
   let img, url;
   try { ({ img, url } = await loadImg(file)); } catch { toast('Bild konnte nicht gelesen werden'); return; }
   const [clean, thumb] = await Promise.all([encodeClean(img), makeThumb(img)]);
-  const draft = { id: uid(), created, title: '', note: '', lat: pos?.lat, lng: pos?.lng, acc: pos?.acc ?? null };
+  const draft = { id: uid(), created, lat: pos?.lat, lng: pos?.lng, acc: pos?.acc ?? null, more: [] };
   return new Promise(resolve => {
     const posText = () => draft.lat == null
       ? '<span class="grow" style="color:#ff9f6b">Keine Position – bitte auf der Karte setzen</span>'
       : `<span class="grow">${pos?.exif && !draft.manual ? 'aus Foto-Metadaten' : draft.manual ? 'manuell gesetzt' : 'GPS'}${draft.acc ? ` · ±${draft.acc} m` : ''}</span>`;
     const auto = store.get('autoPhotos', true);
-    openSheet(batch ? 'Foto importieren' : 'Neue Blume', `
-      <img class="photo-big" src="${url}" alt="">
-      <label class="field"><span>Art / Name</span><input id="fTitle" list="arten" placeholder="z. B. Kornblume" autocomplete="off"></label>
-      <label class="field"><span>Notiz</span><textarea id="fNote" placeholder="Standort, Anzahl, Besonderheiten …"></textarea></label>
+    openSheet(batch ? 'Foto importieren' : 'Neuer Eintrag', `
+      <img class="photo-big" id="fBig" src="${url}" alt="">
+      <div class="strip" id="fStrip"></div>
+      ${fundFields()}
       <div class="posline">${ICON.pin}<span id="fPos" class="grow"></span><button id="fMove">${draft.lat == null ? 'Setzen' : 'Anpassen'}</button></div>
       <div class="row"><button class="btn" id="fCancel">${batch ? 'Überspringen' : 'Verwerfen'}</button><button class="btn primary" id="fSave">Speichern</button></div>
-      ${auto ? '<p class="hint">Danach öffnet sich das Teilen-Menü: „Bild sichern“ tippen, dann liegt die Blume mit Position und Notiz auch in deinen Fotos (iCloud).</p>' : ''}`,
+      ${auto ? '<p class="hint">Danach öffnet sich das Teilen-Menü: „Bilder sichern“ tippen, dann liegt der Fund mit Position und allen Angaben auch in deinen Fotos (iCloud).</p>' : ''}`,
       body => {
+        wireFundFields(body);
+        const extraUrls = [];
+        const strip = () => {
+          $('#fStrip', body).innerHTML = [`<img src="${url}" alt="" class="on" data-i="-1">`, ...draft.more.map((m, i) => `<img src="${extraUrls[i]}" alt="" data-i="${i}">`),
+            `<button type="button" id="fMore" aria-label="Weiteres Foto aufnehmen">${ICON.cam || '+'}<span>Weiteres Foto</span></button>`].join('');
+        };
+        strip();
+        $('#fStrip', body).addEventListener('click', async e => {
+          const im = e.target.closest('img[data-i]');
+          if (im) { $('#fBig', body).src = im.src; body.querySelectorAll('#fStrip img').forEach(x => x.classList.toggle('on', x === im)); return; }
+          if (!e.target.closest('#fMore')) return;
+          const files = await pickMorePhotos(true);
+          for (const f of files) {
+            try { const p = await prepPhoto(f); draft.more.push({ pid: uid(), created: Date.now(), blob: p.clean.blob, thumb: p.thumb, u8: p.clean.u8 }); extraUrls.push(URL.createObjectURL(p.thumb)); }
+            catch { toast('Bild konnte nicht gelesen werden'); }
+          }
+          showSheet(); strip(); toast(`${draft.more.length + 1} Fotos für diesen Eintrag`, 1600);
+        });
         const sync = () => { $('#fPos', body).innerHTML = posText(); $('#fMove', body).textContent = draft.lat == null ? 'Setzen' : 'Anpassen'; };
         sync();
         let finished = false;
-        const finish = v => { if (finished) return; finished = true; URL.revokeObjectURL(url); resolve(v); };
+        const finish = v => { if (finished) return; finished = true; URL.revokeObjectURL(url); extraUrls.forEach(u => URL.revokeObjectURL(u)); resolve(v); };
         const move = async () => {
           const p = await pickPosition(draft.lat != null ? draft : (fix || map.getCenter()));
           if (p) Object.assign(draft, { lat: p.lat, lng: p.lng, acc: null, manual: true });
@@ -944,9 +1038,10 @@ async function newEntryFlow(file, pos, created, batch) {
         $('#fCancel', body).onclick = () => { finish('skip'); closeSheet(); };
         $('#fSave', body).onclick = async () => {
           if (draft.lat == null && !(await move())) return;
-          const rec = { id: draft.id, created: draft.created, updated: Date.now(), lat: draft.lat, lng: draft.lng, acc: draft.acc, title: $('#fTitle', body).value.trim(), note: $('#fNote', body).value.trim(), blob: clean.blob, thumb, clean: true, inPhotos: false };
-          // Teilen-Menü sofort öffnen (iOS erlaubt das nur direkt nach dem Tippen)
-          const shared = store.get('autoPhotos', true) ? shareToPhotos([rec], [clean.u8]) : null;
+          const rec = { id: draft.id, created: draft.created, updated: Date.now(), lat: draft.lat, lng: draft.lng, acc: draft.acc, ...readFundFields(body), blob: clean.blob, thumb, more: draft.more.map(({ u8, ...m }) => m), clean: true, inPhotos: false };
+          // Teilen-Menü sofort öffnen (iOS erlaubt das nur direkt nach dem Tippen) – alle Fotos des Eintrags
+          const shared = store.get('autoPhotos', true)
+            ? shareToPhotos([rec, ...draft.more.map(m => ({ ...rec, pid: m.pid, pcreated: m.created }))], [clean.u8, ...draft.more.map(m => m.u8)]) : null;
           try { await DB.put(rec); } catch (err) { toast('Speichern fehlgeschlagen: ' + err.message, 5000); return; }
           askPersist();
           finish('saved'); closeSheet();
@@ -963,57 +1058,87 @@ async function newEntryFlow(file, pos, created, batch) {
 /* ============================================================
    Detailansicht
    ============================================================ */
-async function openDetail(id) {
+async function openDetail(id, startIdx = 0) {
   const rec = await DB.get(id); if (!rec) return;
-  const url = URL.createObjectURL(rec.blob);
-  let u8 = null; rec.blob.arrayBuffer().then(b => u8 = new Uint8Array(b));
+  const photos = photosOf(rec);
+  let cur = Math.min(startIdx, photos.length - 1);
+  const urls = photos.map(p => URL.createObjectURL(p.blob)), turls = photos.map(p => URL.createObjectURL(p.thumb));
+  let u8s = null; Promise.all(photos.map(p => p.blob.arrayBuffer().then(b => new Uint8Array(b)))).then(x => u8s = x);
   const photoState = rec.inPhotos && !rec.photosStale ? `<span style="color:var(--leaf)">✓ In deinen Fotos gesichert</span>` : rec.inPhotos ? 'Geändert – Kopie in Fotos ist veraltet' : '<span style="color:#ff9f6b">Noch nicht in deinen Fotos gesichert</span>';
+  const shotsFor = () => photos.map((p, i) => i ? { ...rec, pid: p.pid, pcreated: p.created } : rec);
   openSheet(rec.title || 'Ohne Namen', `
-    <img class="photo-big" id="dImg" src="${url}" alt="">
+    <img class="photo-big" id="dImg" src="${urls[cur]}" alt="">
+    <div class="strip" id="dStrip">${photos.length > 1 ? turls.map((u, i) => `<img src="${u}" alt="" data-i="${i}" class="${i === cur ? 'on' : ''}">`).join('') : ''}<button type="button" id="dAdd">${ICON.cam || '+'}<span>Foto hinzufügen</span></button></div>
+    <div class="kindline">${metaLine(rec)}</div>
     ${rec.note ? `<div class="note">${esc(rec.note)}</div>` : ''}
-    <div class="meta">${fmtDate(rec.created)}<br>${fmtCoord(rec.lat, rec.lng)}${rec.acc ? ` · ±${rec.acc} m` : ''}<br>${photoState}</div>
+    <div class="meta">${fmtDate(rec.created)}<br>${fmtCoord(rec.lat, rec.lng)}${rec.acc ? ` · ±${rec.acc} m` : ''}<br>${photos.length} ${photos.length === 1 ? 'Foto' : 'Fotos'} · ${photoState}</div>
     <div class="row"><button class="btn" id="dEdit">${ICON.edit}Bearbeiten</button><button class="btn" id="dMove">${ICON.pin}Position</button></div>
     <div class="row"><button class="btn" id="dNav">${ICON.nav}Hinführen</button><button class="btn" id="dShare">${ICON.share}Teilen</button></div>
-    <div class="row">${rec.inPhotos && !rec.photosStale ? '' : `<button class="btn" id="dPhotos">${ICON.img}In Fotos sichern</button>`}<button class="btn danger" id="dDel">${ICON.trash}Löschen</button></div>`,
+    <div class="row">${rec.inPhotos && !rec.photosStale ? '' : `<button class="btn" id="dPhotos">${ICON.img}In Fotos sichern</button>`}<button class="btn danger" id="dDel">${ICON.trash}Löschen</button></div>
+    <div class="row" id="dRmRow" ${cur ? '' : 'hidden'}><button class="btn" id="dRm">${ICON.trash}Dieses Foto entfernen</button><button class="btn" id="dMain">Als Hauptfoto</button></div>`,
     body => {
-      $('#dImg', body).onclick = () => showViewer(url);
+      const show = i => { cur = i; $('#dImg', body).src = urls[i]; body.querySelectorAll('#dStrip img').forEach(x => x.classList.toggle('on', +x.dataset.i === i)); $('#dRmRow', body).hidden = !i; };
+      $('#dImg', body).onclick = () => showViewer(urls[cur]);
+      $('#dStrip', body).addEventListener('click', async e => {
+        const im = e.target.closest('img[data-i]'); if (im) return show(+im.dataset.i);
+        if (!e.target.closest('#dAdd')) return;
+        const files = await pickMorePhotos(false);
+        let n = 0;
+        for (const f of files) { try { const p = await prepPhoto(f); (rec.more ||= []).push({ pid: uid(), created: Date.now(), blob: p.clean.blob, thumb: p.thumb }); n++; } catch { } }
+        if (!n) return toast('Bild konnte nicht gelesen werden');
+        rec.updated = Date.now(); if (rec.inPhotos) rec.photosStale = true;
+        await DB.put(rec); await loadEntries(); toast(n === 1 ? 'Foto hinzugefügt' : `${n} Fotos hinzugefügt`);
+        openDetail(rec.id, photos.length);
+      });
+      $('#dRm', body).onclick = async () => {
+        if (!cur || !confirm('Dieses Foto aus dem Eintrag entfernen?')) return;
+        rec.more = (rec.more || []).filter(m => m.pid !== photos[cur].pid); rec.updated = Date.now();
+        await DB.put(rec); await loadEntries(); openDetail(rec.id);
+      };
+      $('#dMain', body).onclick = async () => { // Foto tauschen: wird Vorschaubild auf der Karte
+        if (!cur) return;
+        const p = photos[cur], old = { pid: uid(), created: rec.created, blob: rec.blob, thumb: rec.thumb };
+        rec.more = (rec.more || []).map(m => m.pid === p.pid ? old : m); rec.blob = p.blob; rec.thumb = p.thumb; rec.updated = Date.now();
+        await DB.put(rec); await loadEntries(); toast('Hauptfoto geändert'); openDetail(rec.id);
+      };
       $('#dEdit', body).onclick = () => openEdit(rec);
       $('#dMove', body).onclick = async () => {
-        const p = await pickPosition(rec, 'Neue Position für dieses Foto wählen');
+        const p = await pickPosition(rec, 'Neue Position für diesen Eintrag wählen');
         if (p) { Object.assign(rec, { lat: p.lat, lng: p.lng, acc: null, updated: Date.now(), photosStale: !!rec.inPhotos }); await DB.put(rec); await loadEntries(); toast('Position geändert'); }
         openDetail(rec.id);
       };
       $('#dNav', body).onclick = () => { location.href = `https://maps.apple.com/?daddr=${rec.lat},${rec.lng}&dirflg=w`; };
       $('#dShare', body).onclick = async () => {
-        const file = new File([u8 ? tagJpeg(u8, rec) : rec.blob], fileName(rec), { type: 'image/jpeg' });
-        const text = `${rec.title || 'Blume'}${rec.note ? '\n' + rec.note : ''}\nhttps://maps.apple.com/?ll=${rec.lat},${rec.lng}`;
-        const r = await shareFiles([file], text);
+        const shots = shotsFor();
+        const files = photos.map((p, i) => new File([u8s ? tagJpeg(u8s[i], shots[i]) : p.blob], fileName(shots[i]), { type: 'image/jpeg' }));
+        const text = `${rec.title || KINDS[rec.kind] || 'Fund'}${metaLine(rec) ? '\n' + metaLine(rec).replace(/&[^;]+;/g, '') : ''}${rec.note ? '\n' + rec.note : ''}\nhttps://maps.apple.com/?ll=${rec.lat},${rec.lng}`;
+        const r = await shareFiles(files, text);
         if (r === null) { if (navigator.share) navigator.share({ text }).catch(() => { }); else toast('Teilen wird nicht unterstützt'); }
       };
       const dp = $('#dPhotos', body);
       if (dp) dp.onclick = async () => {
-        if (!u8) u8 = new Uint8Array(await rec.blob.arrayBuffer());
-        if (await shareToPhotos([rec], [u8])) { rec.inPhotos = true; rec.photosStale = false; await DB.put(rec); await loadEntries(); openDetail(rec.id); }
+        if (!u8s) return toast('Einen Moment, Bilder werden vorbereitet …');
+        if (await shareToPhotos(shotsFor(), u8s)) { rec.inPhotos = true; rec.photosStale = false; await DB.put(rec); await loadEntries(); openDetail(rec.id); }
       };
       $('#dDel', body).onclick = async () => {
-        if (!confirm('Dieses Foto wirklich aus der App löschen?' + (rec.inPhotos ? '\n(Die Kopie in deinen Fotos bleibt erhalten.)' : ''))) return;
+        if (!confirm(`Diesen Eintrag mit ${photos.length === 1 ? 'seinem Foto' : `allen ${photos.length} Fotos`} wirklich aus der App löschen?` + (rec.inPhotos ? '\n(Die Kopien in deinen Fotos bleiben erhalten.)' : ''))) return;
         await DB.del(rec.id); closeSheet(); await loadEntries(); toast('Gelöscht');
       };
-      return () => setTimeout(() => URL.revokeObjectURL(url), 500);
+      return () => setTimeout(() => [...urls, ...turls].forEach(u => URL.revokeObjectURL(u)), 500);
     });
 }
 function openEdit(rec) {
   const url = URL.createObjectURL(rec.thumb);
   openSheet('Bearbeiten', `
     <img src="${url}" style="width:84px;height:84px;border-radius:12px;object-fit:cover">
-    <label class="field"><span>Art / Name</span><input id="eTitle" list="arten" value="${esc(rec.title)}" autocomplete="off"></label>
-    <label class="field"><span>Notiz</span><textarea id="eNote">${esc(rec.note)}</textarea></label>
+    ${fundFields(rec)}
     <label class="field"><span>Datum</span><input id="eDate" type="datetime-local" value="${new Date(rec.created - new Date(rec.created).getTimezoneOffset() * 6e4).toISOString().slice(0, 16)}"></label>
     <div class="row"><button class="btn" id="eCancel">Abbrechen</button><button class="btn primary" id="eSave">Speichern</button></div>`,
     body => {
+      wireFundFields(body);
       $('#eCancel', body).onclick = () => openDetail(rec.id);
       $('#eSave', body).onclick = async () => {
-        rec.title = $('#eTitle', body).value.trim(); rec.note = $('#eNote', body).value.trim();
+        Object.assign(rec, readFundFields(body));
         const d = new Date($('#eDate', body).value); if (!isNaN(d)) rec.created = d.getTime();
         rec.updated = Date.now(); if (rec.inPhotos) rec.photosStale = true;
         await DB.put(rec); await loadEntries(); openDetail(rec.id);
@@ -1027,20 +1152,23 @@ function openEdit(rec) {
    ============================================================ */
 function openList(items, title) {
   const all = !items; items = items || entries;
-  openSheet(title || `Alle Blumen (${entries.length})`, `
-    ${all ? '<input class="search" id="lQ" type="search" placeholder="Suchen nach Art oder Notiz">' : ''}
+  openSheet(title || `Alle Einträge (${entries.length})`, `
+    ${all ? '<input class="search" id="lQ" type="search" placeholder="Suchen: Name, Jahr, Material, Land, Notiz">' : ''}
+    ${all ? `<div class="seg kindseg" id="lKind"><button type="button" data-k="" class="on">Alle</button>${Object.entries(KINDS).map(([v, l]) => `<button type="button" data-k="${v}">${l}e</button>`).join('')}</div>` : ''}
     <div id="lGrid"></div>
     ${all ? `<div class="row"><button class="btn" id="lImport">${ICON.img}Aus Fotomediathek hinzufügen</button></div>` : ''}`,
     body => {
-      const draw = q => {
-        q = (q || '').toLowerCase();
-        const list = items.filter(e => !q || (e.title + ' ' + e.note).toLowerCase().includes(q));
+      let q = '', kf = '';
+      const draw = () => {
+        const s = q.toLowerCase();
+        const list = items.filter(e => (!kf || (e.kind || 'fund') === kf) && (!s || [e.title, e.note, e.year, e.material, e.land].join(' ').toLowerCase().includes(s)));
         $('#lGrid', body).innerHTML = list.length
-          ? `<div class="grid">${list.map(e => `<button data-id="${e.id}"><img src="${e.thumbUrl}" alt="" loading="lazy"><span class="cap">${esc(e.title || new Date(e.created).toLocaleDateString('de-DE'))}</span></button>`).join('')}</div>`
-          : `<div class="empty">${entries.length ? 'Nichts gefunden.' : 'Noch keine Blumen.<br>Tippe auf den Kamera-Knopf, um die erste festzuhalten.'}</div>`;
+          ? `<div class="grid">${list.map(e => `<button data-id="${e.id}"><img src="${e.thumbUrl}" alt="" loading="lazy">${e.nPhotos > 1 ? `<span class="np">${e.nPhotos}</span>` : ''}<span class="cap">${esc(e.title || KINDS[e.kind] || new Date(e.created).toLocaleDateString('de-DE'))}${e.year ? ` · ${esc(e.year)}` : ''}</span></button>`).join('')}</div>`
+          : `<div class="empty">${entries.length ? 'Nichts gefunden.' : 'Noch keine Funde.<br>Tippe auf den Kamera-Knopf, um den ersten festzuhalten.'}</div>`;
       };
       draw();
-      $('#lQ', body)?.addEventListener('input', e => draw(e.target.value));
+      $('#lQ', body)?.addEventListener('input', e => { q = e.target.value; draw(); });
+      $('#lKind', body)?.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; kf = b.dataset.k; body.querySelectorAll('#lKind button').forEach(x => x.classList.toggle('on', x === b)); draw(); });
       $('#lGrid', body).addEventListener('click', e => {
         const b = e.target.closest('button[data-id]'); if (!b) return;
         const rec = entries.find(x => x.id === b.dataset.id);
@@ -1105,7 +1233,7 @@ async function openMenu() {
       <div>${ICON.img}<span class="grow">${!entries.length ? 'Noch keine Fotos' : todo.length ? `<b style="color:#ff9f6b">${todo.length} von ${entries.length}</b> noch nicht in deinen Fotos` : `<span style="color:var(--leaf)">✓ Alle ${entries.length} in deinen Fotos gesichert</span>`}<span class="sub">Gesicherte Bilder tragen Position, Datum, Name und Notiz in sich – über iCloud-Fotos sind sie sicher.</span></span></div>
       ${todo.length ? `<button id="mPhotos">${ICON.share}<span class="grow" style="color:var(--accent);font-weight:600">Jetzt in Fotos sichern (${Math.min(todo.length, 20)}${todo.length > 20 ? ` von ${todo.length}` : ''})<span class="sub">Im Teilen-Menü „Bilder sichern“ tippen</span></span></button>` : ''}
       <label><input type="checkbox" id="mAuto" ${store.get('autoPhotos', true) ? 'checked' : ''}><span class="grow">Nach jedem Foto automatisch anbieten</span></label>
-      <button id="mRestore">${ICON.up}<span class="grow">Aus Fotos wiederherstellen<span class="sub">Gesicherte Blumen-Fotos auswählen – alles kommt zurück</span></span></button>
+      <button id="mRestore">${ICON.up}<span class="grow">Aus Fotos wiederherstellen<span class="sub">Von HeimatScan gesicherte Fotos auswählen – alles kommt zurück</span></span></button>
       <button id="mExport">${ICON.box}<span class="grow">Backup-Datei erstellen (ZIP)<span class="sub">Letztes Backup: ${lastB ? new Date(lastB).toLocaleDateString('de-DE') : 'noch nie'}</span></span></button>
       <button id="mImport">${ICON.up}<span class="grow">Backup-Datei wiederherstellen</span></button>
       ${shapes.length ? `<div>${ICON.edit}<span class="grow">${shapes.length} Zeichnungen (Gräben & Stellungen)<span class="sub">${shapesNeedBackup() ? '<b style="color:#ff9f6b">Seit dem letzten Backup geändert</b> – ' : ''}sind in der Backup-Datei enthalten, nicht in den Fotos</span></span></div>` : ''}
@@ -1131,7 +1259,7 @@ async function openMenu() {
       <button id="mShapesIn">${ICON.up}<span class="grow">Zeichnungen importieren (GeoJSON)<span class="sub">z. B. in QGIS nachgezeichnete Gräben</span></span></button>
     </div>
     <div class="sec">Info</div>
-    <div class="list"><div>${ICON.info}<span class="grow">${entries.length} Blumen gespeichert<span class="sub">Kartendaten: © GeoBasis-DE/LGB (dl-de/by-2-0), © GeoSN (dl-de/by-2-0; 1965: CC BY-NC-SA 2.0, USGS), © GDI-Th (CC BY 4.0), Esri, OpenStreetMap-Mitwirkende</span></span></div></div>`,
+    <div class="list"><div>${ICON.info}<span class="grow">${entries.length} ${entries.length === 1 ? 'Eintrag' : 'Einträge'} gespeichert<span class="sub">Kartendaten: © GeoBasis-DE/LGB (dl-de/by-2-0), © GeoSN (dl-de/by-2-0; 1965: CC BY-NC-SA 2.0, USGS), © GDI-Th (CC BY 4.0), Esri, OpenStreetMap-Mitwirkende</span></span></div><button id="mImpressum">${ICON.info}<span class="grow">Impressum & Datenquellen</span></button></div>`,
     body => {
       storageInfo().then(t => { const el = $('#mStore', body); if (el) el.textContent = t; });
       $('#mDlView', body).onclick = () => openDownload('view');
@@ -1155,13 +1283,23 @@ async function openMenu() {
       const mp = $('#mPhotos', body);
       if (mp) {
         // Bilder vorbereiten, damit das Teilen-Menü sofort beim Tippen aufgeht
+        // alle Fotos der Einträge (Hauptfoto + weitere), höchstens 20 Bilder pro Teilen-Menü
         const batch = todo.slice(0, 20); let ready = null;
-        Promise.all(batch.map(e => DB.get(e.id).then(r => r.blob.arrayBuffer().then(b => [r, new Uint8Array(b)])))).then(x => ready = x);
+        (async () => {
+          const out = [], recs = [];
+          for (const e of batch) {
+            const r = await DB.get(e.id); if (!r) continue;
+            const ph = photosOf(r); if (out.length && out.length + ph.length > 20) break;
+            recs.push(r);
+            for (const [i, p] of ph.entries()) out.push([i ? { ...r, pid: p.pid, pcreated: p.created } : r, new Uint8Array(await p.blob.arrayBuffer())]);
+          }
+          ready = { out, recs };
+        })();
         mp.onclick = async () => {
           if (!ready) return toast('Einen Moment, Bilder werden vorbereitet …');
-          if (await shareToPhotos(ready.map(x => x[0]), ready.map(x => x[1]))) {
-            for (const [r] of ready) { r.inPhotos = true; r.photosStale = false; await DB.put(r); }
-            await loadEntries(); toast(`${ready.length} Fotos gesichert`); openMenu();
+          if (await shareToPhotos(ready.out.map(x => x[0]), ready.out.map(x => x[1]))) {
+            for (const r of ready.recs) { r.inPhotos = true; r.photosStale = false; await DB.put(r); }
+            await loadEntries(); toast(`${ready.out.length} Fotos gesichert`); openMenu();
           }
         };
       }
@@ -1169,6 +1307,7 @@ async function openMenu() {
       $('#mGeo', body).onclick = exportGeoJSON;
       $('#mShapesOut', body).onclick = exportShapes;
       $('#mShapesIn', body).onclick = () => { $('#inShapes').value = ''; $('#inShapes').click(); };
+      $('#mImpressum', body).onclick = openImpressum;
     });
 }
 async function storageInfo() {
@@ -1182,6 +1321,29 @@ async function storageInfo() {
 }
 let persistAsked = false;
 async function askPersist() { if (persistAsked) return; persistAsked = true; try { await navigator.storage?.persist?.(); } catch { } }
+
+/* ============================================================
+   Impressum
+   ============================================================ */
+function openImpressum() {
+  openSheet('Impressum', `
+    <div class="legal">
+      <p><b>Angaben gemäß § 5 DDG</b></p>
+      <p>LAMPYRIUS UG (haftungsbeschränkt) i. G.<br>Enderstraße 94<br>01277 Dresden<br>Deutschland</p>
+      <p><b>Vertreten durch die Geschäftsführer</b><br>Arne Wolf, Finn Köhler, Philip Plew</p>
+      <p><b>Kontakt</b><br>Telefon: <a href="tel:+491723720719">+49 172 3720719</a><br>E-Mail: <a href="mailto:kontakt@lampyrius.de">kontakt@lampyrius.de</a><br>Web: <a href="https://lampyrius.de">lampyrius.de</a></p>
+      <p><b>Registereintrag</b><br>folgt, Anmeldung noch nicht abgeschlossen</p>
+      <p><b>Umsatzsteuer-Identifikationsnummer</b><br>folgt, Anmeldung noch nicht abgeschlossen</p>
+      <p><b>Datenquellen der Karten</b><br>
+        Brandenburg & Berlin: © GeoBasis-DE/LGB, <a href="https://www.govdata.de/dl-de/by-2-0">dl-de/by-2-0</a><br>
+        Sachsen: © GeoSN, dl-de/by-2-0 · Satellitenbild 1965: © GeoSN/USGS, CC BY-NC-SA 2.0<br>
+        Thüringen: © GDI-Th, <a href="https://creativecommons.org/licenses/by/4.0/deed.de">CC BY 4.0</a><br>
+        Wege & Orte, Satellit weltweit: Esri, HERE, Garmin, Maxar, Earthstar Geographics, © OpenStreetMap-Mitwirkende<br>
+        Landesgrenzen: deutschlandGeoJSON, © GeoBasis-DE/BKG</p>
+      <p><b>Datenschutz in Kürze</b><br>Fotos, Funde und Zeichnungen bleiben auf deinem Gerät. Die App schickt keine persönlichen Daten an LAMPYRIUS. Zum Anzeigen der Karten ruft sie die Kartendienste der Länder und von Esri direkt ab; dabei sehen diese Dienste wie bei jeder Webseite deine IP-Adresse und den angefragten Kartenausschnitt.</p>
+      <p class="hint">Sondeln nur mit Genehmigung der Denkmalbehörde und Erlaubnis des Eigentümers. Bodendenkmale nicht beschädigen; Munition nie anfassen, sondern der Polizei melden.</p>
+    </div>`);
+}
 
 /* ============================================================
    Offline-Karten: Gebiete laden, Fortschritt, Fehler, fortsetzen
@@ -1374,7 +1536,10 @@ function updateChip(res) {
   if (job) { c.hidden = false; c.className = 'glass warn'; ring.style.setProperty('--p', '0deg'); txt.textContent = 'Download unterbrochen – fortsetzen?'; }
   else c.hidden = true;
 }
-$('#dlChip').addEventListener('click', () => {
+$('#dlChip').addEventListener('click', e => {
+  if (!dl && e.target.closest('#dlChipX')) { // wegklicken: unterbrochener Download bleibt unter „Gespeicherte Gebiete“ fortsetzbar
+    e.stopPropagation(); clearTimeout(chipT); lastResult = null; store.set('dlJob', null); $('#dlChip').hidden = true; return;
+  }
   if (dl) return openDlStatus();
   if (lastResult) return openDlStatus(lastResult);
   const jobId = store.get('dlJob', null), job = getAreas().find(a => a.id === jobId);
@@ -1503,14 +1668,18 @@ async function exportBackup() {
   const recs = await DB.all();
   // in Teile ≤ 1,5 GB aufteilen, damit iOS die Datei sicher verarbeiten kann
   const chunks = [[]]; let acc = 0;
-  for (const r of recs) { const s = r.blob.size + r.thumb.size; if (acc + s > 1.5e9 && chunks.at(-1).length) { chunks.push([]); acc = 0; } chunks.at(-1).push(r); acc += s; }
+  for (const r of recs) { const s = photosOf(r).reduce((a, p) => a + p.blob.size + p.thumb.size, 0); if (acc + s > 1.5e9 && chunks.at(-1).length) { chunks.push([]); acc = 0; } chunks.at(-1).push(r); acc += s; }
   const zips = [];
   for (const [i, part] of chunks.entries()) {
-    const meta = part.map(({ blob, thumb, ...m }) => ({ ...m, photo: `fotos/${m.id}.jpg`, thumbFile: `thumbs/${m.id}.jpg` }));
-    const files = [{ name: 'blumen.json', blob: new Blob([JSON.stringify({ app: 'blumenkarte', version: 1, exported: Date.now(), items: meta }, null, 1)], { type: 'application/json' }) }];
-    files.push({ name: 'blumen.geojson', blob: new Blob([JSON.stringify(geojson(part))], { type: 'application/geo+json' }) });
+    const meta = part.map(({ blob, thumb, more, ...m }) => ({ ...m, photo: `fotos/${m.id}.jpg`, thumbFile: `thumbs/${m.id}.jpg`,
+      more: (more || []).map(x => ({ pid: x.pid, created: x.created, photo: `fotos/${m.id}_${x.pid}.jpg`, thumbFile: `thumbs/${m.id}_${x.pid}.jpg` })) }));
+    const files = [{ name: 'funde.json', blob: new Blob([JSON.stringify({ app: 'heimatscan', version: 2, exported: Date.now(), items: meta }, null, 1)], { type: 'application/json' }) }];
+    files.push({ name: 'funde.geojson', blob: new Blob([JSON.stringify(geojson(part))], { type: 'application/geo+json' }) });
     if (i === 0) files.push({ name: 'zeichnungen.geojson', blob: new Blob([JSON.stringify(shapesGeoJSON())], { type: 'application/geo+json' }) });
-    for (const r of part) { files.push({ name: `fotos/${r.id}.jpg`, blob: r.blob }, { name: `thumbs/${r.id}.jpg`, blob: r.thumb }); }
+    for (const r of part) {
+      files.push({ name: `fotos/${r.id}.jpg`, blob: r.blob }, { name: `thumbs/${r.id}.jpg`, blob: r.thumb });
+      for (const x of r.more || []) files.push({ name: `fotos/${r.id}_${x.pid}.jpg`, blob: x.blob }, { name: `thumbs/${r.id}_${x.pid}.jpg`, blob: x.thumb });
+    }
     zips.push(await makeZip(files));
     const el = $('#bx'); if (el) el.textContent = `Teil ${i + 1} von ${chunks.length} erstellt …`;
   }
@@ -1529,16 +1698,25 @@ $('#inBackup').addEventListener('change', async e => {
     const have = new Set(entries.map(x => x.id));
     for (const f of files) {
       const z = await readZip(f);
-      if (!z['blumen.json'] && !z['zeichnungen.geojson']) throw new Error('Kein HeimatScan-Backup');
+      const meta = z['funde.json'] || z['blumen.json']; // ältere Backups hießen blumen.json
+      if (!meta && !z['zeichnungen.geojson']) throw new Error('Kein HeimatScan-Backup');
       if (z['zeichnungen.geojson']) drawn += await importShapesGeoJSON(JSON.parse(await z['zeichnungen.geojson'].text()));
-      const data = z['blumen.json'] ? JSON.parse(await z['blumen.json'].text()) : { items: [] };
+      const data = meta ? JSON.parse(await meta.text()) : { items: [] };
       for (const m of data.items) {
         if (have.has(m.id)) { skipped++; continue; }
         const blob = new Blob([z[m.photo]], { type: 'image/jpeg' });
         let thumb = z[m.thumbFile] ? new Blob([z[m.thumbFile]], { type: 'image/jpeg' }) : null;
         if (!thumb) { const { img, url } = await loadImg(blob); thumb = await makeThumb(img); URL.revokeObjectURL(url); }
-        const { photo, thumbFile, ...rec } = m;
-        await DB.put({ ...rec, blob, thumb }); added++; have.add(m.id);
+        const { photo, thumbFile, more, ...rec } = m;
+        const extras = [];
+        for (const x of more || []) {
+          if (!z[x.photo]) continue;
+          const xb = new Blob([z[x.photo]], { type: 'image/jpeg' });
+          let xt = z[x.thumbFile] ? new Blob([z[x.thumbFile]], { type: 'image/jpeg' }) : null;
+          if (!xt) { const { img, url } = await loadImg(xb); xt = await makeThumb(img); URL.revokeObjectURL(url); }
+          extras.push({ pid: x.pid, created: x.created, blob: xb, thumb: xt });
+        }
+        await DB.put({ kind: 'fund', ...rec, blob, thumb, more: extras }); added++; have.add(m.id);
         const el = $('#ix'); if (el) el.textContent = `${added} Fotos übernommen …`;
       }
     }
@@ -1549,12 +1727,12 @@ $('#inBackup').addEventListener('change', async e => {
 function geojson(list) {
   return {
     type: 'FeatureCollection',
-    features: list.map(r => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [+r.lng.toFixed(7), +r.lat.toFixed(7)] }, properties: { id: r.id, name: r.title || '', notiz: r.note || '', datum: new Date(r.created).toISOString(), genauigkeit_m: r.acc ?? null, foto: `fotos/${r.id}.jpg` } }))
+    features: list.map(r => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [+r.lng.toFixed(7), +r.lat.toFixed(7)] }, properties: { id: r.id, art: KINDS[r.kind] || 'Fund', name: r.title || '', jahr: r.year || '', material: r.material || '', land: r.land || '', notiz: r.note || '', datum: new Date(r.created).toISOString(), genauigkeit_m: r.acc ?? null, foto: `fotos/${r.id}.jpg`, fotos_anzahl: r.nPhotos || 1 + (r.more ? r.more.length : 0) } }))
   };
 }
 function exportGeoJSON() {
   if (!entries.length) return toast('Noch keine Daten');
-  saveFile(new Blob([JSON.stringify(geojson(entries), null, 1)], { type: 'application/geo+json' }), `blumenkarte-${stamp()}.geojson`, 'Die GeoJSON-Datei');
+  saveFile(new Blob([JSON.stringify(geojson(entries), null, 1)], { type: 'application/geo+json' }), `heimatscan-funde-${stamp()}.geojson`, 'Die GeoJSON-Datei');
 }
 
 /* ============================================================

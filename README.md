@@ -38,14 +38,22 @@ Home-Bildschirm wie eine normale App, auch ohne Netz.
   einfach neu starten, Fertiges wird übersprungen.
 
 ## Bedienung
-- **Kamera-Knopf**: Foto machen → Name + Notiz → Speichern. Die Position wird
-  im Moment des Tippens per GPS genommen; mit „Anpassen“ kannst du sie auf der
-  Karte korrigieren.
+- **Kamera-Knopf**: Foto machen → **Fund** oder **Gebäude** wählen → Bezeichnung,
+  Jahr/Datierung, Material, Land/Herkunft und Notiz → Speichern. Material und Land
+  sind Freitext; was du einmal eingegeben hast, schlägt die App später vor.
+  Die Position wird im Moment des Tippens per GPS genommen; mit „Anpassen“ kannst
+  du sie auf der Karte korrigieren.
+- **Weiteres Foto**: im selben Fenster noch mehr Bilder aufnehmen (z. B. Vorder-
+  und Rückseite einer Münze). Alle landen unter einem Eintrag.
+- **Foto hinzufügen**: in einem gespeicherten Eintrag jederzeit weitere Bilder
+  nachlegen (Kamera oder Mediathek). Ein Foto lässt sich dort auch entfernen oder
+  zum Hauptfoto (Vorschaubild auf der Karte) machen.
 - **Luftbild / Gelände** oben: sofort umschalten.
 - **Ebenen-Knopf**: zusätzlich Satellit weltweit (Esri) und OpenStreetMap
   (für außerhalb Brandenburgs, nur online).
 - **Pfeil-Knopf**: zu deinem Standort springen und mitlaufen.
-- **Raster-Knopf**: alle Funde als Galerie, mit Suche.
+- **Raster-Knopf**: alle Einträge als Galerie, mit Suche (Name, Jahr, Material, Land)
+  und Filter Funde/Gebäude.
 - Fotos auf der Karte antippen: Detail, Bearbeiten, Position ändern,
   Hinführen (Apple Karten, zu Fuß), Teilen, Löschen.
 - **Aus Fotomediathek hinzufügen**: ältere Fotos importieren. Die Position kommt
@@ -53,20 +61,20 @@ Home-Bildschirm wie eine normale App, auch ohne Netz.
   Ort einbeziehen“), sonst setzt du sie auf der Karte.
 
 ## Wichtig: So gehen deine Daten nicht verloren
-Die App speichert alles auf dem iPhone. Zusätzlich sichert sie jede Blume in
+Die App speichert alles auf dem iPhone. Zusätzlich sichert sie jeden Fund in
 deine **Fotomediathek** (und damit in iCloud-Fotos):
 
-- Nach dem Speichern geht das Teilen-Menü auf → **„Bild sichern“** tippen.
-  Das Bild trägt dann Position, Datum, Name und Notiz in sich und erscheint
+- Nach dem Speichern geht das Teilen-Menü auf → **„Bilder sichern“** tippen.
+  Jedes Bild trägt dann Position, Datum und alle Angaben in sich und erscheint
   auch in der Karte der iPhone-Fotos-App.
-- Ein **oranger Punkt** am `•••`-Knopf zeigt: Es gibt noch ungesicherte Blumen.
+- Ein **oranger Punkt** am `•••`-Knopf zeigt: Es gibt noch ungesicherte Funde.
   `•••` → „Jetzt in Fotos sichern“ sichert bis zu 20 auf einmal.
 - **Wiederherstellen** (z. B. neues iPhone oder App gelöscht):
-  `•••` → „Aus Fotos wiederherstellen“ → die Blumen-Bilder auswählen
-  (in der Fotos-App z. B. ein Album „Blumen“ anlegen, dann geht das schnell).
-  Alles kommt mit Position, Name und Notiz zurück.
+  `•••` → „Aus Fotos wiederherstellen“ → die HeimatScan-Bilder auswählen
+  (in der Fotos-App z. B. ein Album „Funde“ anlegen, dann geht das schnell).
+  Alles kommt mit Position und Angaben zurück, mehrere Fotos wieder unter einem Eintrag.
 - Zusätzlich gibt es die **Backup-Datei (ZIP)** für iCloud Drive oder den
-  Computer (enthält auch `blumen.geojson` für QGIS).
+  Computer (enthält auch `funde.geojson` für QGIS). Ältere Backups lassen sich weiter einlesen.
 - **App-Updates** (neue Dateien an dieselbe Adresse hochladen) löschen nichts.
   Nur wenn du das App-Icon vom Home-Bildschirm löschst, ist der App-Speicher weg.
 
@@ -115,7 +123,12 @@ beim Katasteramt des Landkreises.
 - Jede Kachel wird geprüft (echtes Bild?). Fehlgeschlagene werden mit Grund
   angezeigt und lassen sich mit **Fehlende nachladen** nachholen.
 - Wird die App mittendrin geschlossen, bietet sie beim nächsten Start
-  **Fortsetzen** an.
+  **Fortsetzen** an. Mit dem **×** daneben blendest du den Hinweis aus; das Gebiet
+  bleibt unter „Gespeicherte Gebiete“ und lässt sich dort später fortsetzen.
+- So wird gespeichert: In der iPhone-App holt die App jede Kachel direkt über die
+  eingebaute Netzwerkfunktion des iPhones, prüft, ob es ein echtes Bild ist, und
+  legt sie als Datei im App-Ordner ab (Library/kacheln, nicht in iCloud). Beim
+  Anzeigen nimmt die App zuerst diese Datei, nur wenn keine da ist, das Internet.
 - **Gespeicherte Gebiete** stehen im Menü: zeigen, prüfen/fortsetzen, löschen.
 - In der App werden **angesehene Karten automatisch mitgespeichert**
   (abschaltbar im Menü).
@@ -123,7 +136,10 @@ beim Katasteramt des Landkreises.
   gröbere Kachel vergrößert, statt einer leeren Fläche.
 
 ## Intro
-Beim Start läuft ein kurzes Intro (3 s). Antippen überspringt es.
+Beim Start läuft ein kurzes Intro (2 s) mit „powered by LAMPYRIUS“. Antippen überspringt es.
+
+## Impressum
+`•••` → **Impressum & Datenquellen** (LAMPYRIUS UG (haftungsbeschränkt) i. G., Dresden).
 
 ## Gräben & Stellungen nachzeichnen
 - Seitenknopf mit der Zickzack-Linie → **Zeichenmodus**.
