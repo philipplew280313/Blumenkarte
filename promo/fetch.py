@@ -22,7 +22,7 @@ def job(j):
             t = time.time()
             with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 HeimatScan-promo'}), timeout=180) as r:
                 data = r.read(); ct = r.headers.get('Content-Type', '')
-            if 'xml' in ct or 'text' in ct and not out.endswith(('.txt', '.json', '.xml')):
+            if ('xml' in ct or 'text' in ct) and not out.endswith(('.txt', '.json', '.xml')):
                 raise RuntimeError('Server-Antwort: ' + data[:300].decode('utf8', 'replace'))
             open(out, 'wb').write(data)
             return f"OK {j['name']} {len(data)} B {time.time()-t:.1f}s"
