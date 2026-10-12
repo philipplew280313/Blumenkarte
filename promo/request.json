@@ -1,76 +1,58 @@
 {
  "jobs": [
   {
-   "name": "detail_reitweinspur_dgm.jpg",
+   "name": "scan_diedersdorf_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.488,
-   "lon": 14.556,
-   "w": 900,
-   "px": 1350
+   "lat": 52.505,
+   "lon": 14.33,
+   "w": 2500,
+   "px": 2500
   },
   {
-   "name": "detail_reitweinspur2_dgm.jpg",
+   "name": "scan_lietzen_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.493,
-   "lon": 14.545,
-   "w": 900,
-   "px": 1350
+   "lat": 52.478,
+   "lon": 14.315,
+   "w": 2500,
+   "px": 2500
   },
   {
-   "name": "detail_lebushang_dgm.jpg",
+   "name": "scan_dolgelin_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.43,
-   "lon": 14.545,
-   "w": 900,
-   "px": 1350
+   "lat": 52.478,
+   "lon": 14.42,
+   "w": 2500,
+   "px": 2500
   },
   {
-   "name": "detail_seelowhang_dgm.jpg",
+   "name": "scan_hermersdorf_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.545,
-   "lon": 14.385,
-   "w": 900,
-   "px": 1350
+   "lat": 52.55,
+   "lon": 14.2,
+   "w": 2500,
+   "px": 2500
   },
   {
-   "name": "detail_seelowhang2_dgm.jpg",
+   "name": "scan_muencheberg_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.528,
-   "lon": 14.392,
-   "w": 900,
-   "px": 1350
+   "lat": 52.515,
+   "lon": 14.1,
+   "w": 2500,
+   "px": 2500
   },
   {
-   "name": "detail_doeberitzpits_dgm.jpg",
+   "name": "scan_buckow_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.493,
-   "lon": 13.035,
-   "w": 900,
-   "px": 1350
-  },
-  {
-   "name": "detail_halbewald_dgm.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
-   "layers": "dgm",
-   "lat": 52.1,
-   "lon": 13.705,
-   "w": 900,
-   "px": 1350
-  },
-  {
-   "name": "detail_gorgast_dgm.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
-   "layers": "dgm",
-   "lat": 52.5596,
-   "lon": 14.5444,
-   "w": 900,
-   "px": 1350
+   "lat": 52.57,
+   "lon": 14.08,
+   "w": 2500,
+   "px": 2500
   }
  ]
 }
