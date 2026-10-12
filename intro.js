@@ -163,14 +163,38 @@
   const k = Math.min(W * 0.80 / big.w, H * 0.075 / 100);
   const tx = (W - big.w * k) / 2, ty = H * 0.47 - 50 * k;
   const aX = big.glyphs.find(g => g[0] === 'a')[1]; // erstes „a“
-  const holeX = tx + (aX + 27.5) * k, holeY = ty + 69 * k; // Mitte des Bauchs vom ersten „a“
-  function counterPath(c) { // Innenraum des ersten „a“ in Bildschirm-Koordinaten
+  let holeX = tx + (aX + 27.5) * k, holeY = ty + 69 * k; // Mitte des Bauchs vom ersten „a“
+  let zoomMax = 90;
+
+  /* ---------- HeimatScan-Logo (Bilddatei). Fällt auf die gezeichnete Schrift zurück, falls es nicht lädt. ---------- */
+  const LOGO_W = 1400, LOGO_H = 202;
+  const TRI = [[606, 80.5], [592, 107.4], [620.1, 107.4]]; // Innenfläche des ersten „A“ (Pixel in der Logo-Datei)
+  const logoImg = new Image(); logoImg.decoding = 'async'; logoImg.src = 'icons/heimatscan-logo.png';
+  let useLogo = false, lk = 1, lx = 0, ly = 0, triPts = null;
+  function useLogoLayout() {
+    useLogo = true;
+    lk = Math.min(W * 0.88 / LOGO_W, H * 0.12 / LOGO_H);
+    lx = (W - LOGO_W * lk) / 2; ly = H * 0.47 - LOGO_H * lk / 2;
+    const cx = (TRI[0][0] + TRI[1][0] + TRI[2][0]) / 3, cy = (TRI[0][1] + TRI[1][1] + TRI[2][1]) / 3;
+    // etwas kleiner als die Innenfläche, damit die schwarze Kontur stehen bleibt
+    triPts = TRI.map(([px, py]) => [lx + (cx + (px - cx) * 0.72) * lk, ly + (cy + (py - cy) * 0.72) * lk]);
+    holeX = lx + cx * lk; holeY = ly + cy * lk;
+    const side = (TRI[2][0] - TRI[1][0]) * 0.72 * lk;
+    zoomMax = Math.max(90, 4.6 * Math.hypot(W, H) / side); // bis das Dreieck den ganzen Bildschirm füllt (Dreieck braucht mehr als ein Kreis)
+  }
+  function counterPath(c) { // Innenraum, durch den das Intro in die App fliegt (Bildschirm-Koordinaten)
+    if (useLogo) { c.beginPath(); c.moveTo(...triPts[0]); c.lineTo(...triPts[1]); c.lineTo(...triPts[2]); c.closePath(); return; }
     c.save(); c.translate(tx + aX * k, ty); c.scale(k, k);
     c.beginPath(); c.ellipse(27.5, 69, 26.5 - LW / 2, 31 - LW / 2, 0, 0, TAU);
     c.restore();
   }
   function lettering() {
     const [c, x] = mk();
+    if (useLogo) {
+      x.save(); x.shadowColor = 'rgba(0,0,0,.55)'; x.shadowBlur = 18; x.shadowOffsetY = 4;
+      x.imageSmoothingQuality = 'high'; x.drawImage(logoImg, lx, ly, LOGO_W * lk, LOGO_H * lk); x.restore();
+      return c;
+    }
     const pass = (lw, style, ox = 0, oy = 0, jitter = 0) => {
       for (const [ch, gx] of big.glyphs) {
         x.save(); x.translate(tx + ox + gx * k, ty + oy); x.scale(k, k);
@@ -295,8 +319,8 @@
       if (t >= T_SWEEP0 - 120 && u < 1) detector(ctx, ang);
       powered(ctx, Math.min(1, t / 200));
     } else {
-      // Zoom durch das „D“
-      const u = Math.min(1, (t - T_ZOOM0) / (T_END - T_ZOOM0)), e = u * u * u, s = Math.exp(Math.log(90) * e);
+      // Zoom durch das erste „A“
+      const u = Math.min(1, (t - T_ZOOM0) / (T_END - T_ZOOM0)), e = useLogo ? Math.pow(Math.min(1, u / 0.82), 2.2) : u * u * u, s = Math.exp(Math.log(zoomMax) * e);
       ctx.translate(holeX, holeY); ctx.scale(s, s); ctx.translate(-holeX, -holeY);
       ctx.drawImage(B, 0, 0, W, H); ctx.drawImage(T, 0, 0, W, H);
       ctx.globalCompositeOperation = 'destination-out'; counterPath(ctx); ctx.fill();
@@ -307,9 +331,16 @@
     }
     if (!dbg) requestAnimationFrame(frame);
   }
-  try {
-    A = forest(); B = dgm(); T = lettering();
-    requestAnimationFrame(frame);
-  } catch (e) { console.warn('Intro', e); finish(); }
+  function start() {
+    try {
+      A = forest(); B = dgm(); T = lettering();
+      requestAnimationFrame(frame);
+    } catch (e) { console.warn('Intro', e); finish(); }
+  }
+  // Logo abwarten (liegt in der App, also sofort da) – höchstens 500 ms, sonst gezeichnete Schrift
+  let started = false;
+  const go = ok => { if (started) return; started = true; if (ok && logoImg.naturalWidth) useLogoLayout(); start(); };
+  (logoImg.decode ? logoImg.decode() : new Promise((r, j) => { logoImg.onload = r; logoImg.onerror = j; })).then(() => go(true), () => go(false));
+  setTimeout(() => go(false), 500);
   if (!dbg) setTimeout(finish, 4500); // Sicherheitsnetz
 })();

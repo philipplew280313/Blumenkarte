@@ -49,7 +49,7 @@ input,textarea{font:inherit;color:var(--ink)}
 #btnHybrid svg,#btnFlur svg{width:17px;height:17px}
 #btnHybrid.on,#btnFlur.on{background:var(--accent);color:#fff;border-color:transparent}
 #btnFlur{position:absolute;left:0;top:50px;height:38px;font-size:13.5px;padding:0 11px}
-.leaflet-flur-pane{filter:drop-shadow(0 0 1px rgba(0,0,0,.75))}
+.leaflet-flur-pane .mt{filter:drop-shadow(0 0 1px rgba(0,0,0,.75))}
 .seg{pointer-events:auto;display:flex;padding:3px;border-radius:14px;gap:2px}
 .seg button{padding:9px 11px;border-radius:11px;font-size:14px;font-weight:600;color:var(--ink-2);letter-spacing:.1px;transition:background .2s,color .2s}
 .seg button.on{background:var(--ink);color:#16150f}
@@ -77,7 +77,8 @@ input,textarea{font:inherit;color:var(--ink)}
 /* ---------- Kacheln & Hybrid ---------- */
 .leaflet-tile.mt{overflow:hidden}
 .mt img{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
-.leaflet-hybrid-pane{filter:drop-shadow(0 0 1px rgba(0,0,0,.6))}
+.leaflet-hybrid-pane .mt{filter:drop-shadow(0 0 1px rgba(0,0,0,.6))}
+.relief .mt{filter:var(--relief)}
 
 /* ---------- Download-Fortschritt ---------- */
 #dlChip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 112px);z-index:520;display:flex;align-items:center;gap:9px;padding:8px 15px 8px 10px;border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis}

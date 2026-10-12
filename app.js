@@ -147,20 +147,22 @@ function regionState(rk, z, x, y) {
   regionCache.set(key, v);
   return v;
 }
-function wmsUrl(src, z, x, y, png) {
+function wmsUrl(src, z, x, y, png, px = 512) {
   const size = 2 * E / Math.pow(2, z), minx = -E + x * size, maxy = E - y * size;
   const bbox = [minx, maxy - size, minx + size, maxy].map(n => n.toFixed(2)).join(',');
-  // 512 px pro Kachel → scharf auf dem Retina-Display
-  return `${src.url}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${src.layers}&STYLES=${src.styles || ''}&CRS=EPSG%3A3857&FORMAT=${png ? 'image%2Fpng&TRANSPARENT=TRUE' : 'image%2Fjpeg'}&WIDTH=512&HEIGHT=512&BBOX=${bbox}`;
+  // 512 px pro Kachel → scharf auf dem Retina-Display (Sammelkachel: 1024 px = 4 Kacheln in einer Anfrage)
+  return `${src.url}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${src.layers}&STYLES=${src.styles || ''}&CRS=EPSG%3A3857&FORMAT=${png ? 'image%2Fpng&TRANSPARENT=TRUE' : 'image%2Fjpeg'}&WIDTH=${px}&HEIGHT=${px}&BBOX=${bbox}`;
 }
 // Alle Bild-Adressen für eine Kachel (unten → oben). An der Landesgrenze zwei durchsichtige Bilder übereinander.
-function tileUrls(def, z, x, y) {
+// meta = Sammelkachel: Stufe z, aber doppelte Pixelzahl – deckt genau die 4 Kacheln der Stufe z+1 ab, gleich scharf.
+function tileUrls(def, z, x, y, meta) {
   if (def.xyz) return [def.xyz.replace('{z}', z).replace('{x}', x).replace('{y}', y)];
-  if (def.minZoom && z < def.minZoom) return [];
-  const parts = def.sources.filter(s => !s.minZ || z >= s.minZ).map(s => [s, regionState(s.region, z, x, y)]).filter(p => p[1]);
+  const zz = meta ? z + 1 : z; // Zoomgrenzen gelten für die Detailstufe
+  if (def.minZoom && zz < def.minZoom) return [];
+  const parts = def.sources.filter(s => !s.minZ || zz >= s.minZ).map(s => [s, regionState(s.region, z, x, y)]).filter(p => p[1]);
   // An Landesgrenzen (und bei mehreren Quellen) durchsichtiges PNG: außerhalb der Daten bleibt der graue Hintergrund statt Weiß
   const png = def.png || parts.length > 1 || parts.some(p => p[1] === 1);
-  return parts.map(([s]) => wmsUrl(s, z, x, y, png));
+  return parts.map(([s]) => wmsUrl(s, z, x, y, png, meta ? 1024 : 512));
 }
 // Info-Ebene der LGB zum Luftbild 1953 (Abdeckungsübersicht)
 const YEARS_DEF = { sources: [{ region: 'bb', url: 'https://isk.geobasis-bb.de/mapproxy/dop100g_1953/service/wms', layers: 'bb_dop100g-53_info' }], png: true, maxNative: 14, attr: '' };
@@ -186,6 +188,28 @@ const TileStore = NATIVE ? {
     }
   },
   localSrc(url) { return this.base && window.Capacitor.convertFileSrc ? window.Capacitor.convertFileSrc(this.base + '/' + tileRel(url)) : null; },
+  /* Verzeichnis der gespeicherten Kacheln (je Unterordner einmal eingelesen). So wird eine Kachel,
+     die nicht gespeichert ist, sofort aus dem Netz geladen – statt erst die fehlende Datei zu versuchen. */
+  dirs: new Map(),
+  listDir(sub) {
+    let p = this.dirs.get(sub);
+    if (!p) {
+      p = callNative('Filesystem', 'readdir', { path: 'kacheln/' + sub, directory: this.dir })
+        .then(r => new Set((r && r.files || []).map(f => typeof f === 'string' ? f : f && f.name).filter(Boolean)))
+        .catch(() => new Set());
+      this.dirs.set(sub, p);
+    }
+    return p;
+  },
+  async localFor(url) {
+    if (!this.base || !window.Capacitor.convertFileSrc) return null;
+    const rel = tileRel(url);
+    return (await this.listDir(rel.slice(0, 2))).has(rel.slice(3)) ? this.localSrc(url) : null;
+  },
+  mark(url, on) {
+    const rel = tileRel(url), p = this.dirs.get(rel.slice(0, 2));
+    if (p) p.then(s => on ? s.add(rel.slice(3)) : s.delete(rel.slice(3)));
+  },
   async has(url) { try { const s = await callNative('Filesystem', 'stat', { path: 'kacheln/' + tileRel(url), directory: this.dir }); return !s || s.size === undefined || +s.size > 0; } catch { return false; } },
   /* Kachel laden und als Datei im App-Ordner ablegen (Library/kacheln, nicht in iCloud):
      1. Bild per nativer HTTP-Abfrage holen (ohne Browser-Sperren, kommt als Base64)
@@ -202,14 +226,17 @@ const TileStore = NATIVE ? {
     const head = atob(b64.slice(0, 16)), bytes = [...head].map(c => c.charCodeAt(0));
     if (!looksLikeImage(bytes)) throw new Error('Server lieferte kein Bild');
     await callNative('Filesystem', 'writeFile', { path, directory, data: b64, recursive: true });
+    this.mark(url, true);
     return Math.floor(b64.length * 3 / 4);
   },
-  remove(url) { return callNative('Filesystem', 'deleteFile', { path: 'kacheln/' + tileRel(url), directory: this.dir }).catch(() => { }); },
-  clear() { return callNative('Filesystem', 'rmdir', { path: 'kacheln', directory: this.dir, recursive: true }).catch(() => { }); }
+  remove(url) { this.mark(url, false); return callNative('Filesystem', 'deleteFile', { path: 'kacheln/' + tileRel(url), directory: this.dir }).catch(() => { }); },
+  clear() { this.dirs.clear(); return callNative('Filesystem', 'rmdir', { path: 'kacheln', directory: this.dir, recursive: true }).catch(() => { }); }
 } : {
   ok: 'caches' in window,
   init() { },
   localSrc() { return null; },
+  async localFor() { return null; },
+  mark() { },
   async has(url) { return !!(await (await caches.open(TILES_CACHE)).match(url)); },
   async download(url) {
     const r = await withTimeout(fetchTile(url), 45000, 'Server antwortet nicht');
@@ -231,6 +258,10 @@ TileStore.ready = Promise.resolve(TileStore.init()).catch(() => { });
 /* In der App: angesehene Kacheln im Hintergrund mitspeichern (wie der Browser-Cache in der Web-Version) */
 const viewQueue = [], viewSeen = new Set();
 let viewBusy = 0;
+// Mitspeichern erst, wenn die Karte ruht – sonst konkurriert es mit den sichtbaren Kacheln um die Leitung
+let mapQuietAt = 0, quietTimer = 0;
+function mapBusy() { mapQuietAt = Infinity; clearTimeout(quietTimer); }
+function mapCalm() { mapQuietAt = Date.now() + 1200; clearTimeout(quietTimer); quietTimer = setTimeout(pumpViewQueue, 1250); }
 function queueViewSave(urls) {
   if (!NATIVE || !store.get('saveViewed', true) || !TileStore.base) return;
   for (const u of urls) if (!viewSeen.has(u) && /isk\.geobasis-bb\.de|geodienste\.sachsen\.de|geoproxy\.geoportal-th\.de|arcgisonline\.com\/ArcGIS\/rest\/services\/Reference/.test(u)) { if (viewSeen.size > 20000) viewSeen.clear(); viewSeen.add(u); viewQueue.push(u); }
@@ -238,7 +269,8 @@ function queueViewSave(urls) {
   pumpViewQueue();
 }
 function pumpViewQueue() {
-  while (viewBusy < 2 && viewQueue.length && !(dl && dl.running)) {
+  if (Date.now() < mapQuietAt) return; // mapCalm() stößt später wieder an
+  while (viewBusy < 2 && viewQueue.length && !(dl && dl.running) && Date.now() >= mapQuietAt) {
     const u = viewQueue.pop(); viewBusy++;
     TileStore.has(u).then(h => h ? 0 : TileStore.download(u).then(() => bumpTileCount(1)))
       .catch(() => { }).finally(() => { viewBusy--; pumpViewQueue(); });
@@ -247,40 +279,111 @@ function pumpViewQueue() {
 function bumpTileCount(n) { store.set('tileCount', Math.max(0, store.get('tileCount', 0) + n)); }
 
 /* ---------- Kachel-Darstellung: Mosaik, offline aus dem Speicher, sonst gröbere Kachel vergrößert ---------- */
-function showImgs(el, urls, f, ox, oy) {
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+// Kachel wird nicht mehr gebraucht (weggezoomt/weggeschoben): laufende Downloads sofort abbrechen,
+// damit die Leitung frei ist für das, was gerade sichtbar ist
+function killTile(el) {
+  if (!el || el._dead) return;
+  el._dead = true;
+  el.setAttribute('src', BLANK); // Leaflet überspringt damit die Fertig-Meldung dieser Kachel
+  el.querySelectorAll('img').forEach(i => { i.onload = i.onerror = null; if (!i.complete) i.src = BLANK; });
+}
+/* Bilder einer Kachel anzeigen. root = die Leaflet-Kachel (für den Abbruch-Check), localOnly = nur aus dem Speicher.
+   f > 1: Ausschnitt einer gröberen Kachel vergrößert anzeigen (immer nur aus dem Speicher, nie übers Netz). */
+function showImgs(el, urls, f, ox, oy, localOnly, root = el) {
   el.textContent = '';
-  return Promise.all(urls.map(u => new Promise(res => {
+  // Bilder in fester Reihenfolge anlegen (unten → oben), Quelle danach setzen
+  const imgs = urls.map(() => {
     const img = document.createElement('img'); img.alt = ''; img.setAttribute('role', 'presentation'); img.decoding = 'async';
     if (f > 1) Object.assign(img.style, { width: f * 100 + '%', height: f * 100 + '%', left: -ox * 100 + '%', top: -oy * 100 + '%' });
-    const local = TileStore.localSrc(u);
-    let net = !local;
-    img.onload = () => res({ img, u, net });
-    img.onerror = () => { if (!net && f === 1) { net = true; img.src = u; } else { img.remove(); res(null); } };
-    img.src = local || u;
-    el.appendChild(img);
-  }))).then(r => r.filter(Boolean));
+    el.appendChild(img); return img;
+  });
+  return Promise.all(urls.map(async (u, k) => {
+    const img = imgs[k];
+    const local = await TileStore.localFor(u);
+    if (root._dead) return null;
+    const fileSrc = TileStore.localSrc(u);
+    if (f > 1 || localOnly) {
+      // Web-Version: der Service Worker liefert gespeicherte Kacheln unter ihrer Adresse aus
+      const src = NATIVE ? local || (f > 1 ? fileSrc : null) : u;
+      if (!src) { img.remove(); return null; }
+      return new Promise(res => { img.onload = () => res({ img, u, net: false }); img.onerror = () => { img.remove(); res(null); }; img.src = src; });
+    }
+    return new Promise(res => {
+      let net = !local, triedFile = !!local;
+      img.onload = () => res({ img, u, net });
+      img.onerror = () => {
+        if (root._dead) return res(null);
+        if (!net) { net = true; img.src = u; return; }                        // Datei weg → Netz
+        if (!triedFile && fileSrc) { triedFile = true; net = false; img.src = fileSrc; return; } // Netz weg → doch Datei versuchen
+        img.remove(); res(null);
+      };
+      img.src = local || u;
+    });
+  })).then(r => r.filter(Boolean));
+}
+// Liegt die Kachel komplett im Speicher?
+async function allLocal(urls) { for (const u of urls) if (!(await TileStore.localFor(u))) return false; return urls.length > 0; }
+// Sammelkachel aus den 4 einzeln gespeicherten Kacheln zusammensetzen (Offline-Gebiete speichern Einzelkacheln)
+function quadKids(def, c) {
+  const out = [];
+  for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) out.push({ dx, dy, urls: tileUrls(def, c.z + 1, c.x * 2 + dx, c.y * 2 + dy) });
+  return out;
+}
+async function showQuad(el, kids) {
+  el.textContent = '';
+  let n = 0;
+  await Promise.all(kids.map(async k => {
+    if (!k.urls.length) return;
+    const q = document.createElement('div');
+    q.style.cssText = `position:absolute;overflow:hidden;width:50%;height:50%;left:${k.dx * 50}%;top:${k.dy * 50}%`;
+    el.appendChild(q);
+    n += (await showImgs(q, k.urls, 1, 0, 0, true, el)).length;
+  }));
+  return n > 0;
 }
 async function loadTileStack(el, def, c, urls) {
   await TileStore.ready;
+  let kids = null;
+  if (c.meta && NATIVE && !(await allLocal(urls))) {
+    // Offline gespeichertes Gebiet: sofort aus den 4 Einzelkacheln, ganz ohne Netz
+    kids = quadKids(def, c);
+    if (await allLocal(kids.flatMap(k => k.urls)) && !el._dead && await showQuad(el, kids)) return true;
+  }
+  if (el._dead) return false;
   const ok = await showImgs(el, urls, 1, 0, 0);
+  if (el._dead) return false;
   if (ok.length) { queueViewSave(ok.filter(o => o.net).map(o => o.u)); return true; }
-  // Offline oder Server weg: gröbere Kachel aus dem Speicher vergrößert anzeigen
-  for (let d = 1; d <= 7 && c.z - d >= 6; d++) {
-    const z = c.z - d, x = c.x >> d, y = c.y >> d, pu = tileUrls(def, z, x, y);
-    if (!pu.length) break;
-    if ((await showImgs(el, pu, 2 ** d, c.x - (x << d), c.y - (y << d))).length) return true;
+  // Offline oder Server weg: was immer im Speicher liegt
+  if (c.meta) {
+    if (kids && await showQuad(el, kids)) return true;                                // Teile der 4 Einzelkacheln
+    if ((await showImgs(el, tileUrls(def, c.z, c.x, c.y), 1, 0, 0, true)).length) return true; // gleiche Fläche, einfache Auflösung
+  }
+  // gröbere Kachel aus dem Speicher vergrößert anzeigen
+  for (let d = 1; d <= 6 && c.z - d >= 6 && !el._dead; d++) {
+    const z = c.z - d, x = c.x >> d, y = c.y >> d, ox = c.x - (x << d), oy = c.y - (y << d);
+    for (const meta of c.meta ? [true, false] : [false]) {
+      const pu = tileUrls(def, z, x, y, meta);
+      if (pu.length && (await showImgs(el, pu, 2 ** d, ox, oy)).length) return true;
+    }
   }
   return false;
 }
 const DefTileLayer = L.TileLayer.extend({
   initialize(def, opts) {
     this.def = def;
+    // WMS-Ebenen: Sammelkacheln (512 px groß, eine Anfrage für 4 Kacheln). Der grobe Hintergrund hat eigene Größe.
+    const meta = !!def.sources && !(opts && opts.tileSize);
     L.TileLayer.prototype.initialize.call(this, '', Object.assign({
       maxNativeZoom: def.maxNative, maxZoom: 21, attribution: def.attr || '',
       bounds: def.sources ? ALL_BOUNDS : undefined, keepBuffer: 1,
       // erst nach dem Zoomen laden: schnelles Rauszoomen erzeugt sonst hunderte Bilder auf einmal (Speicher!)
-      updateWhenZooming: false
-    }, opts || {}));
+      updateWhenZooming: false,
+      // schon während des Verschiebens nachladen (Leaflet wartet auf dem Handy sonst, bis der Finger weg ist)
+      updateWhenIdle: false, updateInterval: 150
+    }, meta ? { tileSize: 512, zoomOffset: -1, meta: true } : {}, opts || {}));
+    // verworfene Kacheln: Downloads abbrechen
+    this.on('tileunload tileabort', e => killTile(e.tile));
   },
   // Alte Kacheln behalten, bis die neuen wirklich da sind (der grobe Hintergrund deckt den Rest)
   _pruneTiles() {
@@ -290,25 +393,26 @@ const DefTileLayer = L.TileLayer.extend({
     for (const k in this._tiles) this._tiles[k].retain = this._tiles[k].current;
     for (const k in this._tiles) {
       const t = this._tiles[k];
-      if (t.current && !t.active) { const c = t.coords; if (!this._retainParent(c.x, c.y, c.z, c.z - 5)) this._retainChildren(c.x, c.y, c.z, c.z + 2); }
+      if (t.current && !t.active) { const c = t.coords; if (!this._retainParent(c.x, c.y, c.z, c.z - 5)) this._retainChildren(c.x, c.y, c.z, c.z + 1); }
     }
     for (const k in this._tiles) if (!this._tiles[k].retain) this._removeTile(k);
   },
-  // Hintergrund: auch die Umgebung schon laden (3×3 Bildschirme), damit Rauszoomen sofort etwas zeigt
+  // Hintergrund: auch die Umgebung schon laden (je ein halber Bildschirm Rand), damit Rauszoomen sofort etwas zeigt.
+  // (Früher 3×3 Bildschirme – das hat beim Start die Leitung für die scharfen Kacheln verstopft.)
   _getTiledPixelBounds(center) {
     const b = L.TileLayer.prototype._getTiledPixelBounds.call(this, center);
     if (!this.options.preload) return b;
-    const s = b.getSize();
+    const s = b.getSize().divideBy(2);
     return L.bounds(b.min.subtract(s), b.max.add(s));
   },
-  getTileUrl(c) { return tileUrls(this.def, c.z + (this.options.zoomOffset || 0), c.x, c.y)[0] || ''; },
+  getTileUrl(c) { return tileUrls(this.def, c.z + (this.options.zoomOffset || 0), c.x, c.y, this.options.meta)[0] || ''; },
   createTile(coords, done) {
-    if (this.options.zoomOffset) coords = { x: coords.x, y: coords.y, z: coords.z + this.options.zoomOffset };
+    coords = { x: coords.x, y: coords.y, z: coords.z + (this.options.zoomOffset || 0), meta: !!this.options.meta };
     const el = document.createElement('div'); el.className = 'mt';
     // Leaflet wirft beim Zoomen alle alten Kacheln weg, deren Bild noch nicht „complete“ ist.
     // Ein div hat das Feld nicht → ohne diese Markierung war die Karte beim Zoomen kurz leer.
     el.complete = false;
-    const urls = tileUrls(this.def, coords.z, coords.x, coords.y);
+    const urls = tileUrls(this.def, coords.z, coords.x, coords.y, coords.meta);
     if (!urls.length) { el.complete = true; setTimeout(() => done(null, el), 0); return el; }
     loadTileStack(el, this.def, coords, urls).then(ok => { el.complete = true; done(ok ? null : new Error('Kachel fehlt'), el); });
     return el;
@@ -323,9 +427,18 @@ const map = L.map('map', {
 map.attributionControl.setPrefix(false);
 map.attributionControl.getContainer().addEventListener('click', e => { if (e.target.tagName !== 'A') e.currentTarget.classList.toggle('open'); });
 L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
+map.on('movestart zoomstart', mapBusy).on('moveend zoomend', mapCalm);
 
 const layerObjs = {}, backObjs = {};
 let currentLayer = null, currentBack = null;
+/* Kartenwechsel ohne leeren Bildschirm: die alte Karte bleibt liegen, die neue baut sich darüber auf.
+   Sobald sie fertig ist (spätestens nach 3 s), verschwindet die alte. */
+let oldLayers = [], swapTimer = 0, swapTok = 0;
+function dropOld() {
+  clearTimeout(swapTimer);
+  for (const l of oldLayers) if (l && l !== currentLayer && l !== currentBack) map.removeLayer(l);
+  oldLayers = [];
+}
 /* Grober Hintergrund (3 Stufen gröber, 8× so große Kacheln): lädt schnell und deckt beim Zoomen
    und Verschieben die Fläche ab, bis die scharfen Kacheln da sind – nie mehr leerer Bildschirm. */
 map.createPane('backdrop'); map.getPane('backdrop').style.zIndex = 150; map.getPane('backdrop').style.pointerEvents = 'none';
@@ -333,12 +446,20 @@ const makeBack = def => new DefTileLayer(def, { pane: 'backdrop', tileSize: 2048
 function setLayer(key) {
   if (key === 'h53') key = 'hist';
   if (!LAYERS[key]) key = 'dop';
-  if (currentLayer) map.removeLayer(currentLayer);
-  if (currentBack) map.removeLayer(currentBack);
+  const prevL = currentLayer, prevB = currentBack;
+  dropOld();
   currentLayer = layerObjs[key] ||= new DefTileLayer(LAYERS[key]);
   currentBack = backObjs[key] ||= makeBack(LAYERS[key]);
-  currentBack.addTo(map);
-  currentLayer.addTo(map).bringToBack();
+  if (!map.hasLayer(currentBack)) currentBack.addTo(map);
+  if (!map.hasLayer(currentLayer)) currentLayer.addTo(map);
+  if (prevL && prevL !== currentLayer) {
+    currentBack.bringToFront(); currentLayer.bringToFront();
+    try { if (yearsLayer && map.hasLayer(yearsLayer)) yearsLayer.bringToFront(); } catch { } // Jahres-Übersicht bleibt oben
+    oldLayers = [prevL, prevB];
+    const tok = ++swapTok, done = () => { if (tok === swapTok) dropOld(); };
+    currentLayer.once('load', done);
+    swapTimer = setTimeout(done, 3000);
+  } else currentLayer.bringToBack();
   applyRelief();
   store.set('layer', key);
   if (key === 'hist') setTimeout(() => { histHint = false; checkHistHint(); }, 0);
@@ -531,11 +652,17 @@ function ownerHint(cfg) {
     <span class="sub">Wem ein Flurstück gehört, steht im Grundbuch und nicht in den frei abrufbaren Katasterdaten. Auskunft bekommst du mit „berechtigtem Interesse“ (z. B. Kauf- oder Pachtanfrage, Nachbarschaft, Erlaubnis für Sondengänge einholen): beim Grundbuchamt (Amtsgericht) oder als Auszug beim ${esc(cfg.kataster)}. Oft hilft auch die Gemeinde weiter.</span></span></div></div>`;
 }
 // Relief verstärken: Kontrast des Geländemodells anheben, damit flache Gräben hervortreten
+// Der Filter sitzt auf jeder einzelnen Kachel, nicht auf der ganzen Ebene: Ein Filter auf der Ebene zwingt iOS,
+// ein Zwischenbild in Größe ALLER geladenen Kacheln anzulegen (beim Rauszoomen riesig) – das hat die App abstürzen lassen.
+// Der grobe Hintergrund (2048-px-Kacheln) bleibt ohne Filter.
 function applyRelief() {
   const v = store.get('relief', 1);
   for (const l of [layerObjs.dgm, backObjs.dgm]) {
     const c = l && l.getContainer && l.getContainer(); if (!c) continue;
-    c.style.filter = v > 1 ? `contrast(${v}) brightness(${(1 + (v - 1) * .08).toFixed(2)})` : '';
+    c.style.filter = '';
+    const on = v > 1 && l === layerObjs.dgm;
+    c.classList.toggle('relief', on);
+    c.style.setProperty('--relief', on ? `contrast(${v}) brightness(${(1 + (v - 1) * .08).toFixed(2)})` : 'none');
   }
 }
 let yearsLayer = null;
@@ -761,7 +888,9 @@ async function loadImg(blob) {
   try { await img.decode(); } catch (e) { URL.revokeObjectURL(url); throw e; }
   return { img, url };
 }
-function canvasBlob(c, q = .85) { return new Promise(r => c.toBlob(r, 'image/jpeg', q)); }
+// Canvas danach sofort freigeben: iOS hat ein festes Budget für Canvas-Speicher. Bei vielen Fotos hintereinander
+// (z. B. Import aus der Mediathek) lagen sonst mehrere 12-Megapixel-Flächen (je ~48 MB) im Speicher, bis die App abstürzt.
+function canvasBlob(c, q = .85) { return new Promise(r => c.toBlob(b => { c.width = c.height = 0; r(b); }, 'image/jpeg', q)); }
 async function makeThumb(img, s = 200) {
   const c = document.createElement('canvas'); c.width = c.height = s;
   const w = img.naturalWidth, h = img.naturalHeight, m = Math.min(w, h);
