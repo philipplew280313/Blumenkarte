@@ -1,58 +1,40 @@
 {
  "jobs": [
   {
-   "name": "scan_diedersdorf_dgm.jpg",
+   "name": "doeb0_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
    "lat": 52.505,
-   "lon": 14.33,
-   "w": 2500,
-   "px": 2500
+   "lon": 13.02,
+   "w": 2400,
+   "px": 2400
   },
   {
-   "name": "scan_lietzen_dgm.jpg",
+   "name": "doeb1_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.478,
-   "lon": 14.315,
-   "w": 2500,
-   "px": 2500
+   "lat": 52.505,
+   "lon": 13.055,
+   "w": 2400,
+   "px": 2400
   },
   {
-   "name": "scan_dolgelin_dgm.jpg",
+   "name": "doeb2_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.478,
-   "lon": 14.42,
-   "w": 2500,
-   "px": 2500
+   "lat": 52.485,
+   "lon": 13.02,
+   "w": 2400,
+   "px": 2400
   },
   {
-   "name": "scan_hermersdorf_dgm.jpg",
+   "name": "doeb3_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.55,
-   "lon": 14.2,
-   "w": 2500,
-   "px": 2500
-  },
-  {
-   "name": "scan_muencheberg_dgm.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
-   "layers": "dgm",
-   "lat": 52.515,
-   "lon": 14.1,
-   "w": 2500,
-   "px": 2500
-  },
-  {
-   "name": "scan_buckow_dgm.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
-   "layers": "dgm",
-   "lat": 52.57,
-   "lon": 14.08,
-   "w": 2500,
-   "px": 2500
+   "lat": 52.485,
+   "lon": 13.055,
+   "w": 2400,
+   "px": 2400
   }
  ]
 }
