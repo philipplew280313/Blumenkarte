@@ -1,0 +1,28 @@
+# Hilfszweig für das Werbevideo: lädt Kartenbilder (WMS) und Dateien herunter und legt sie in promo/out ab.
+# Läuft nur auf diesem Zweig, hat nichts mit der App zu tun.
+name: Werbevideo-Material holen
+on:
+  push:
+    branches: [promo-media]
+    paths: ["promo/request.json"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: promo-media
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Material laden
+        run: python3 promo/fetch.py
+      - name: Ergebnis speichern
+        run: |
+          git config user.name "promo-bot"
+          git config user.email "promo-bot@users.noreply.github.com"
+          git add -A promo/out
+          git commit -m "Material $(date -u +%H:%M:%S)" || echo "nichts neu"
+          git push
