@@ -1,40 +1,60 @@
 {
  "jobs": [
   {
-   "name": "doeb0_dgm.jpg",
+   "name": "f_dgm_big.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.505,
-   "lon": 13.02,
-   "w": 2400,
-   "px": 2400
+   "lat": 52.5095,
+   "lon": 13.034,
+   "w": 3200,
+   "px": 3200
   },
   {
-   "name": "doeb1_dgm.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
-   "layers": "dgm",
-   "lat": 52.505,
-   "lon": 13.055,
-   "w": 2400,
-   "px": 2400
+   "name": "f_dop_big.jpg",
+   "wms": "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms",
+   "layers": "bebb_dop20c",
+   "lat": 52.5095,
+   "lon": 13.034,
+   "w": 3200,
+   "px": 4000
   },
   {
-   "name": "doeb2_dgm.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
-   "layers": "dgm",
-   "lat": 52.485,
-   "lon": 13.02,
-   "w": 2400,
-   "px": 2400
+   "name": "f_hist_big.jpg",
+   "wms": "https://isk.geobasis-bb.de/mapproxy/dop100g_1953/service/wms",
+   "layers": "bb_dop100g_1953",
+   "lat": 52.5095,
+   "lon": 13.034,
+   "w": 3200,
+   "px": 3200
   },
   {
-   "name": "doeb3_dgm.jpg",
+   "name": "f_dgm_det.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.485,
-   "lon": 13.055,
-   "w": 2400,
-   "px": 2400
+   "lat": 52.5095,
+   "lon": 13.034,
+   "w": 900,
+   "px": 1800
+  },
+  {
+   "name": "f_dop_det.jpg",
+   "wms": "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms",
+   "layers": "bebb_dop20c",
+   "lat": 52.5095,
+   "lon": 13.034,
+   "w": 900,
+   "px": 3600
+  },
+  {
+   "name": "f_flur_det.png",
+   "wms": "https://isk.geobasis-bb.de/ows/alkis_wms",
+   "layers": "adv_alkis_flurstuecke",
+   "styles": "Gelb",
+   "fmt": "image/png",
+   "lat": 52.5095,
+   "lon": 13.034,
+   "w": 900,
+   "px": 1800
   }
  ]
 }
