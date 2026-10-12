@@ -1,60 +1,8 @@
 {
  "jobs": [
   {
-   "name": "f_dgm_big.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
-   "layers": "dgm",
-   "lat": 52.5095,
-   "lon": 13.034,
-   "w": 3200,
-   "px": 3200
-  },
-  {
-   "name": "f_dop_big.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms",
-   "layers": "bebb_dop20c",
-   "lat": 52.5095,
-   "lon": 13.034,
-   "w": 3200,
-   "px": 4000
-  },
-  {
-   "name": "f_hist_big.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dop100g_1953/service/wms",
-   "layers": "bb_dop100g_1953",
-   "lat": 52.5095,
-   "lon": 13.034,
-   "w": 3200,
-   "px": 3200
-  },
-  {
-   "name": "f_dgm_det.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
-   "layers": "dgm",
-   "lat": 52.5095,
-   "lon": 13.034,
-   "w": 900,
-   "px": 1800
-  },
-  {
-   "name": "f_dop_det.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms",
-   "layers": "bebb_dop20c",
-   "lat": 52.5095,
-   "lon": 13.034,
-   "w": 900,
-   "px": 3600
-  },
-  {
-   "name": "f_flur_det.png",
-   "wms": "https://isk.geobasis-bb.de/ows/alkis_wms",
-   "layers": "adv_alkis_flurstuecke",
-   "styles": "Gelb",
-   "fmt": "image/png",
-   "lat": 52.5095,
-   "lon": 13.034,
-   "w": 900,
-   "px": 1800
+   "name": "vo_take1.mp3",
+   "url": "https://storage.googleapis.com/xi-backend/database/workspace/38e2b2a044cc4e57a44231f86d35012b/content_generation/hMsKQxL49aEgXGeiAf3T/dja5o52WrjsyvKGCAzn3/content.mp3?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=xi-backend-prod%40xi-labs.iam.gserviceaccount.com%2F20261012%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20261012T135544Z&X-Goog-Expires=7200&X-Goog-SignedHeaders=host&X-Goog-Signature=900cd431cb03943f99aeefae4c601ae14273cd568c141d586402b496af8087c39004e73bd1804551a018b781dc04bf6777a2fbcf13a33cbbfe94ffbb28c4b13db64a060d4115336e4cdaf67d7e1612e3531e7e2d44a834de136c4b3246fd3f24556895905d2723b4177ede96f93060acfc4dcfd34eed14d8bd4c4eb0c0d34ebb86e10ee0228d5dda5bb00f15ff58c88a5d0f9be339993f012d7c0dc581b772b62d7f596909408a8a6d9d9d4b926d90814e24018d704c1e963d4acf51d31427cf42b705dea3643f401811858a284a6703f0b20cc0560074eaa0e07a2ea6ff4d5e66c132079ce733ed898e49d3d3fb2f55564dcad75efbb9561ba93f40fd5c6716"
   }
  ]
 }
