@@ -64,6 +64,9 @@ jobs:
         run: |
           P=Info.plist
           plutil -replace CFBundleDisplayName -string "HeimatScan" $P
+          # Jede Version eine eigene Nummer, damit AltStore Updates sauber erkennt (1.<Baunummer>)
+          plutil -replace CFBundleShortVersionString -string "1.${{ github.run_number }}" $P
+          plutil -replace CFBundleVersion -string "${{ github.run_number }}" $P
           plutil -replace NSCameraUsageDescription -string "Damit du Funde und Gebäude fotografieren kannst." $P
           plutil -replace NSLocationWhenInUseUsageDescription -string "Damit deine Position auf der Karte erscheint und Fotos dem Fundort zugeordnet werden." $P
           plutil -replace NSPhotoLibraryUsageDescription -string "Damit du Fotos aus deiner Mediathek hinzufügen kannst." $P
