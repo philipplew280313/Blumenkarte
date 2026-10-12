@@ -91,13 +91,14 @@ jobs:
           cp -R build/Build/Products/Release-iphoneos/App.app Payload/
           zip -qry HeimatScan.ipa Payload
           ls -la HeimatScan.ipa
+          cp HeimatScan.ipa Blumenkarte.ipa   # alter Link funktioniert weiter
 
       - name: Als Download bereitstellen
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="app-${{ github.run_number }}"
-          gh release create "$TAG" native/ios/App/HeimatScan.ipa \
+          gh release create "$TAG" native/ios/App/HeimatScan.ipa native/ios/App/Blumenkarte.ipa \
             --title "HeimatScan App (Bau ${{ github.run_number }})" \
             --notes "In AltStore installieren: Datei aufs iPhone laden, dann AltStore → Meine Apps → + → HeimatScan.ipa wählen." \
             --latest
