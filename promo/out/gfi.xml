@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<gmlx:FeatureCollection xmlns:adv="http://www.adv-online.de/namespaces/adv/gid/7.1" xmlns:gmlx="http://www.opengis.net/gml" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.adv-online.de/namespaces/adv/gid/7.1 https://isk.geobasis-bb.de/schema/old-gml-versions/3.1.1/NAS/7.1/adv/nas/7.1/AAA-Fachschema.xsd http://www.opengis.net/gml https://isk.geobasis-bb.de/schema/old-gml-versions/3.1.1/NAS/7.1/ogc/gml/3.1.1/base/gml.xsd http://www.isotc211.org/2005/gco https://isk.geobasis-bb.de/schema/old-gml-versions/3.1.1/NAS/7.1/iso/19139/20070417/gco/gco.xsd http://www.isotc211.org/2005/gmd https://isk.geobasis-bb.de/schema/old-gml-versions/3.1.1/NAS/7.1/iso/19139/20070417/gmd/gmd.xsd">
+<gmlx:boundedBy>
+<gmlx:Envelope srsName="urn:ogc:def:crs:EPSG::3857">
+<gmlx:lowerCorner>1448670.05077537 6892212.35570556</gmlx:lowerCorner>
+<gmlx:upperCorner>1453267.8645324 6895098.55827554</gmlx:upperCorner>
+</gmlx:Envelope>
+</gmlx:boundedBy>
+<gmlx:featureMember>
+<adv:AX_Flurstueck gmlx:id="DEBBAL630006fc9j">
+<adv:lebenszeitintervall>
+<adv:AA_Lebenszeitintervall>
+<adv:beginnt>2026-07-03T10:29:26Z</adv:beginnt>
+</adv:AA_Lebenszeitintervall>
+</adv:lebenszeitintervall>
+<adv:modellart>
+<adv:AA_Modellart>
+<adv:advStandardModell>DLKM</adv:advStandardModell>
+</adv:AA_Modellart>
+</adv:modellart>
+<adv:anlass xlink:href="https://registry.gdi-de.org/codelist/de.adv-online.gid/AA_Anlassart/010403" xlink:title="Veränderung der tatsächlichen Nutzung mit Änderung der Wirtschaftsart"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcgL"/>
+<adv:position>
+<gmlx:Polygon>
+<gmlx:exterior>
+<gmlx:LinearRing>
+<gmlx:posList>1448670.05077537 6894784.57271089 1448757.33874272 6894657.24518765 1448887.51585557 6894479.58858075 1448999.10911642 6894291.37820991 1449042.5893173 6894208.60682153 1449104.2724699 6894087.10285367 1449215.18674414 6893868.36572547 1449259.75288152 6893788.07485413 1449266.12138876 6893763.04882638 1449382.04377537 6893849.85838713 1449399.34789335 6893820.60799419 1449416.62589403 6893793.74681736 1449434.97996731 6893765.56985457 1449453.11402645 6893739.01357648 1449473.51096226 6893710.93893422 1449491.23852713 6893684.41927565 1449509.42236302 6893656.74936718 1449527.70158875 6893630.26635216 1449546.29401776 6893604.20482026 1449565.43842507 6893576.25224941 1449583.39541142 6893550.62071421 1449601.71166075 6893523.24581508 1449621.62401747 6893495.21416396 1449639.92846483 6893468.38179885 1449659.84003478 6893439.34859759 1449679.21868916 6893411.68072147 1449698.27235077 6893385.21446619 1449717.76899485 6893356.82132719 1449736.89135212 6893326.87031781 1449757.34100599 6893299.79452833 1449776.4204304 6893272.66636309 1449795.73710303 6893246.09736511 1449814.88484994 6893217.71957893 1449834.88083295 6893190.65618133 1449855.18316941 6893160.95992406 1449760.81198692 6893095.31249418 1449864.21842283 6893003.32627855 1450196.13930285 6892681.65980516 1451482.07475452 6892473.09596512 1451889.92335422 6892400.44768174 1452818.60050604 6892232.32386678 1452930.36585212 6892212.35570556 1453003.26222263 6892274.56565855 1453013.66325614 6892284.39964576 1453038.1479883 6892314.55531524 1453058.57534038 6892330.23353274 1453108.86560329 6892359.5838153 1453162.20542695 6892389.24982015 1453194.49837265 6892409.49622021 1453228.98502468 6892438.76101532 1453249.84657313 6892457.84002172 1453267.8645324 6892480.12463278 1453187.30755592 6892504.45921245 1453148.79511927 6892526.55665937 1453128.79394965 6892547.03294938 1453111.71720905 6892577.76789597 1453098.86743156 6892612.66110057 1453109.72950206 6892931.46888016 1452595.08925751 6893918.11839803 1451751.75618546 6894406.93648294 1450687.30603415 6894917.05986893 1450402.14965953 6894953.58331353 1450110.1920838 6895000.70006746 1449899.96719345 6895026.38248865 1449266.6902323 6895098.55827554 1449151.54243965 6895020.83243098 1448670.05077537 6894784.57271089</gmlx:posList>
+</gmlx:LinearRing>
+</gmlx:exterior>
+</gmlx:Polygon>
+</adv:position>
+<adv:gemarkung>
+<adv:AX_Gemarkung_Schluessel>
+<adv:land>12</adv:land>
+<adv:gemarkungsnummer>8422</adv:gemarkungsnummer>
+</adv:AX_Gemarkung_Schluessel>
+</adv:gemarkung>
+<adv:flurstuecksnummer>
+<adv:AX_Flurstuecksnummer>
+<adv:zaehler>33</adv:zaehler>
+</adv:AX_Flurstuecksnummer>
+</adv:flurstuecksnummer>
+<adv:flurstueckskennzeichen>12842200100033______</adv:flurstueckskennzeichen>
+<adv:amtlicheFlaeche uom="m2">2735714.0</adv:amtlicheFlaeche>
+<adv:flurnummer>1</adv:flurnummer>
+<adv:abweichenderRechtszustand>false</adv:abweichenderRechtszustand>
+<adv:zeitpunktDerEntstehung>2004-01-01</adv:zeitpunktDerEntstehung>
+<adv:gemeindezugehoerigkeit>
+<adv:AX_Gemeindekennzeichen>
+<adv:land>12</adv:land>
+<adv:regierungsbezirk>0</adv:regierungsbezirk>
+<adv:kreis>63</adv:kreis>
+<adv:gemeinde>056</adv:gemeinde>
+</adv:AX_Gemeindekennzeichen>
+</adv:gemeindezugehoerigkeit>
+<adv:istGebucht xlink:href="urn:adv:oid:DEBBAL630006fd1h"/>
+<adv:zeigtAuf xlink:href="urn:adv:oid:DEBBAL01000cURNG"/>
+<adv:zeigtAuf xlink:href="urn:adv:oid:DEBBAL630000DyV6"/>
+</adv:AX_Flurstueck>
+</gmlx:featureMember>
+<gmlx:featureMember>
+<adv:AX_LagebezeichnungOhneHausnummer gmlx:id="DEBBAL01000cURNG">
+<adv:lebenszeitintervall>
+<adv:AA_Lebenszeitintervall>
+<adv:beginnt>2024-02-13T09:59:55Z</adv:beginnt>
+</adv:AA_Lebenszeitintervall>
+</adv:lebenszeitintervall>
+<adv:modellart>
+<adv:AA_Modellart>
+<adv:advStandardModell>DLKM</adv:advStandardModell>
+</adv:AA_Modellart>
+</adv:modellart>
+<adv:anlass xlink:href="https://registry.gdi-de.org/codelist/de.adv-online.gid/AA_Anlassart/010402" xlink:title="Veränderung der Lage"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL01000cURNF"/>
+<adv:lagebezeichnung>
+<adv:AX_Lagebezeichnung>
+<adv:unverschluesselt>Rämel Berg</adv:unverschluesselt>
+</adv:AX_Lagebezeichnung>
+</adv:lagebezeichnung>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fccD"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fccP"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fc9D"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fc9L"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fc9S"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fc9f"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fc9g"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fc9h"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fc9j"/>
+</adv:AX_LagebezeichnungOhneHausnummer>
+</gmlx:featureMember>
+<gmlx:featureMember>
+<adv:AX_LagebezeichnungOhneHausnummer gmlx:id="DEBBAL630000DyV6">
+<adv:lebenszeitintervall>
+<adv:AA_Lebenszeitintervall>
+<adv:beginnt>2021-02-04T14:18:11Z</adv:beginnt>
+</adv:AA_Lebenszeitintervall>
+</adv:lebenszeitintervall>
+<adv:modellart>
+<adv:AA_Modellart>
+<adv:advStandardModell>DLKM</adv:advStandardModell>
+</adv:AA_Modellart>
+</adv:modellart>
+<adv:anlass xlink:href="https://registry.gdi-de.org/codelist/de.adv-online.gid/AA_Anlassart/000000" xlink:title="Ersteinrichtung"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcEX"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcC6"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcC7"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcEK"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcEL"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcEQ"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcER"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcjN"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcjO"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcjR"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcjS"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcmA"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fco6"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcx3"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcx4"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcjL"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcjM"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcjP"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcjQ"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcjT"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcmC"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcmE"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcES"/>
+<adv:inversZu_dientZurDarstellungVon_AP_PTO xlink:href="urn:adv:oid:DEBBAL630006fcEY"/>
+<adv:lagebezeichnung>
+<adv:AX_Lagebezeichnung>
+<adv:verschluesselt>
+<adv:AX_VerschluesselteLagebezeichnung>
+<adv:land>12</adv:land>
+<adv:regierungsbezirk>0</adv:regierungsbezirk>
+<adv:kreis>63</adv:kreis>
+<adv:gemeinde>056</adv:gemeinde>
+<adv:lage>X9999</adv:lage>
+</adv:AX_VerschluesselteLagebezeichnung>
+</adv:verschluesselt>
+</adv:AX_Lagebezeichnung>
+</adv:lagebezeichnung>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630000DkSX"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630000DlWq"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630000DlXv"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630000DkTg"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL010009Rtmz"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630000DlXo"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630003Etbv"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630000DkP4"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630000DkQP"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630000DkQU"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fc9E"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fc9j"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fca0"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fcad"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fcdB"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fcdG"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fcdz"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630000DkWl"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fc9X"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fcdL"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fcfs"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fcft"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fcfR"/>
+<adv:gehoertZu xlink:href="urn:adv:oid:DEBBAL630006fcg2"/>
+</adv:AX_LagebezeichnungOhneHausnummer>
+</gmlx:featureMember>
+</gmlx:FeatureCollection>
