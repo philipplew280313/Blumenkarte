@@ -1,148 +1,76 @@
 {
  "jobs": [
   {
-   "name": "scout_reitwein_dgm.jpg",
+   "name": "detail_reitweinspur_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.505,
-   "lon": 14.575,
-   "w": 2400,
-   "px": 1200
+   "lat": 52.488,
+   "lon": 14.556,
+   "w": 900,
+   "px": 1350
   },
   {
-   "name": "scout_reitwein_dop.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms",
-   "layers": "bebb_dop20c",
-   "lat": 52.505,
-   "lon": 14.575,
-   "w": 2400,
-   "px": 800
-  },
-  {
-   "name": "scout_seelow_dgm.jpg",
+   "name": "detail_reitweinspur2_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.54,
-   "lon": 14.395,
-   "w": 2400,
-   "px": 1200
+   "lat": 52.493,
+   "lon": 14.545,
+   "w": 900,
+   "px": 1350
   },
   {
-   "name": "scout_seelow_dop.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms",
-   "layers": "bebb_dop20c",
-   "lat": 52.54,
-   "lon": 14.395,
-   "w": 2400,
-   "px": 800
-  },
-  {
-   "name": "scout_halbe_dgm.jpg",
+   "name": "detail_lebushang_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.09,
-   "lon": 13.69,
-   "w": 2400,
-   "px": 1200
+   "lat": 52.43,
+   "lon": 14.545,
+   "w": 900,
+   "px": 1350
   },
   {
-   "name": "scout_halbe_dop.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms",
-   "layers": "bebb_dop20c",
-   "lat": 52.09,
-   "lon": 13.69,
-   "w": 2400,
-   "px": 800
-  },
-  {
-   "name": "scout_doeberitz_dgm.jpg",
+   "name": "detail_seelowhang_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.5,
-   "lon": 13.05,
-   "w": 2400,
-   "px": 1200
+   "lat": 52.545,
+   "lon": 14.385,
+   "w": 900,
+   "px": 1350
   },
   {
-   "name": "scout_doeberitz_dop.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms",
-   "layers": "bebb_dop20c",
-   "lat": 52.5,
-   "lon": 13.05,
-   "w": 2400,
-   "px": 800
-  },
-  {
-   "name": "scout_lebus_dgm.jpg",
+   "name": "detail_seelowhang2_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.425,
-   "lon": 14.535,
-   "w": 2400,
-   "px": 1200
+   "lat": 52.528,
+   "lon": 14.392,
+   "w": 900,
+   "px": 1350
   },
   {
-   "name": "scout_lebus_dop.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms",
-   "layers": "bebb_dop20c",
-   "lat": 52.425,
-   "lon": 14.535,
-   "w": 2400,
-   "px": 800
-  },
-  {
-   "name": "scout_wuensdorf_dgm.jpg",
+   "name": "detail_doeberitzpits_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.165,
-   "lon": 13.445,
-   "w": 2400,
-   "px": 1200
+   "lat": 52.493,
+   "lon": 13.035,
+   "w": 900,
+   "px": 1350
   },
   {
-   "name": "scout_wuensdorf_dop.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms",
-   "layers": "bebb_dop20c",
-   "lat": 52.165,
-   "lon": 13.445,
-   "w": 2400,
-   "px": 800
-  },
-  {
-   "name": "scout_zinna_dgm.jpg",
+   "name": "detail_halbewald_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.045,
-   "lon": 13.07,
-   "w": 2400,
-   "px": 1200
+   "lat": 52.1,
+   "lon": 13.705,
+   "w": 900,
+   "px": 1350
   },
   {
-   "name": "scout_zinna_dop.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms",
-   "layers": "bebb_dop20c",
-   "lat": 52.045,
-   "lon": 13.07,
-   "w": 2400,
-   "px": 800
-  },
-  {
-   "name": "scout_kuestrin_dgm.jpg",
+   "name": "detail_gorgast_dgm.jpg",
    "wms": "https://isk.geobasis-bb.de/mapproxy/dgm/service/wms",
    "layers": "dgm",
-   "lat": 52.565,
-   "lon": 14.555,
-   "w": 2400,
-   "px": 1200
-  },
-  {
-   "name": "scout_kuestrin_dop.jpg",
-   "wms": "https://isk.geobasis-bb.de/mapproxy/dop20c/service/wms",
-   "layers": "bebb_dop20c",
-   "lat": 52.565,
-   "lon": 14.555,
-   "w": 2400,
-   "px": 800
+   "lat": 52.5596,
+   "lon": 14.5444,
+   "w": 900,
+   "px": 1350
   }
  ]
 }
