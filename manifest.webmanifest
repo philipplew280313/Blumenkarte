@@ -1,7 +1,7 @@
 {
   "name": "HeimatScan",
   "short_name": "HeimatScan",
-  "description": "Blumenfunde fotografieren und auf der Karte von Brandenburg festhalten",
+  "description": "Funde fotografieren und mit Luftbild, Gelände und historischen Karten festhalten",
   "lang": "de",
   "start_url": "./",
   "scope": "./",
